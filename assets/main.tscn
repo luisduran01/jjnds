@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://c2c1xa77ijlgq"]
+
+[ext_resource type="PackedScene" uid="uid://cwdbgoxxcvbpx" path="res://assets/player.tscn" id="1_db5cl"]
+[ext_resource type="Texture2D" uid="uid://pftfmcdn8j6s" path="res://assets/backgrounds/ChatGPT Image 9 sept 2026, 15_09_52.png" id="2_06ig3"]
+
+[node name="main" type="Node2D" unique_id=1920928341]
+
+[node name="Player" parent="." unique_id=642783612 instance=ExtResource("1_db5cl")]
+speed = 455.0
+
+[node name="Background" type="Sprite2D" parent="." unique_id=706741201]
+z_index = -10
+position = Vector2(668, 381)
+scale = Vector2(0.79605263, 0.81402767)
+texture = ExtResource("2_06ig3")
