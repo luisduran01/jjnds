@@ -1,8 +1,8 @@
 extends Area2D
 
-# ==========================================
-# CONFIGURACIÓN
-# ==========================================
+# ============================================================
+# CONFIGURACIÓN - MOVIMIENTO
+# ============================================================
 
 @export var speed: float = 455.0
 
@@ -12,53 +12,61 @@ extends Area2D
 @export var left_limit: float = 50.0
 @export var right_limit: float = 3790.0
 
-@export var attack_cooldown: float = 0.15
-@export var attack_damage: int = 20
 
-# Momento en que el puño empieza a hacer daño.
-@export var hitbox_delay: float = 0.10
-
-# Tiempo durante el cual el golpe está activo.
-@export var hitbox_active_time: float = 0.12
+# ============================================================
+# CONFIGURACIÓN - COMBATE
+# ============================================================
 
 @export var max_health: int = 100
-@export var enemy_damage: int = 15
-@export var knockback_force: float = 70.0
 
-var health: int = 100
-var invulnerable: bool = false
-var dead: bool = false
-# ==========================================
+@export var attack_damage: int = 20
+@export var attack_cooldown: float = 0.15
+
+# Cuánto tarda en activarse el puño después de iniciar attack
+@export var hitbox_delay: float = 0.10
+
+# Cuánto tiempo permanece activo el puño
+@export var hitbox_active_time: float = 0.12
+
+@export var knockback_force: float = 70.0
+@export var invulnerability_time: float = 0.40
+
+
+# ============================================================
 # VARIABLES
-# ==========================================
+# ============================================================
 
 var screen_size: Vector2
 
 var vertical_velocity: float = 0.0
 var ground_y: float
 
+var health: int = 100
+
 var is_jumping: bool = false
 var is_attacking: bool = false
 var is_hurt: bool = false
 
 var can_attack: bool = true
+var invulnerable: bool = false
+var dead: bool = false
 
-# Evita hacer daño varias veces al mismo enemigo
-# durante un solo golpe.
+# Evita golpear varias veces al mismo enemigo
+# durante un único ataque.
 var enemies_hit: Array[Node] = []
 
 
-# ==========================================
+# ============================================================
 # NODOS
-# ==========================================
+# ============================================================
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var attack_hitbox: Area2D = $AttackHitbox
 
 
-# ==========================================
+# ============================================================
 # READY
-# ==========================================
+# ============================================================
 
 func _ready() -> void:
 
@@ -66,21 +74,33 @@ func _ready() -> void:
 
 	ground_y = position.y
 
-	sprite.play("idle")
+	health = max_health
 
-	# El puño empieza desactivado.
 	attack_hitbox.monitoring = false
 
+	# Grupo para que Enemy pueda encontrar a Alonso.
+	add_to_group("player")
 
-# ==========================================
+	sprite.play("idle")
+
+
+# ============================================================
 # PROCESS
-# ==========================================
+# ============================================================
 
 func _process(delta: float) -> void:
 
-	# ------------------------------------------
+	# --------------------------------------------------------
+	# KO
+	# --------------------------------------------------------
+
+	if dead:
+		return
+
+
+	# --------------------------------------------------------
 	# ATAQUE
-	# ------------------------------------------
+	# --------------------------------------------------------
 
 	if Input.is_action_just_pressed("attack"):
 
@@ -89,9 +109,9 @@ func _process(delta: float) -> void:
 			attack()
 
 
-	# ------------------------------------------
+	# --------------------------------------------------------
 	# SALTO
-	# ------------------------------------------
+	# --------------------------------------------------------
 
 	if Input.is_action_just_pressed("jump"):
 
@@ -100,32 +120,32 @@ func _process(delta: float) -> void:
 			jump()
 
 
-	# ------------------------------------------
-	# GRAVEDAD
-	# ------------------------------------------
+	# --------------------------------------------------------
+	# PROCESAR SALTO
+	# --------------------------------------------------------
 
 	process_jump(delta)
 
 
-	# ------------------------------------------
-	# RECIBIENDO DAÑO
-	# ------------------------------------------
+	# --------------------------------------------------------
+	# NO MOVERSE MIENTRAS RECIBE DAÑO
+	# --------------------------------------------------------
 
 	if is_hurt:
 		return
 
 
-	# ------------------------------------------
-	# ATACANDO
-	# ------------------------------------------
+	# --------------------------------------------------------
+	# NO MOVERSE MIENTRAS ATACA
+	# --------------------------------------------------------
 
 	if is_attacking:
 		return
 
 
-	# ------------------------------------------
-	# MOVIMIENTO
-	# ------------------------------------------
+	# --------------------------------------------------------
+	# DIRECCIÓN
+	# --------------------------------------------------------
 
 	var direction: float = Input.get_axis(
 		"move_left",
@@ -133,34 +153,34 @@ func _process(delta: float) -> void:
 	)
 
 
-	# ------------------------------------------
-	# DIRECCIÓN DEL PERSONAJE
-	# ------------------------------------------
+	# --------------------------------------------------------
+	# GIRAR PERSONAJE
+	# --------------------------------------------------------
 
-	if direction > 0:
+	if direction > 0.0:
 
 		sprite.flip_h = false
 		update_hitbox_direction(false)
 
 
-	elif direction < 0:
+	elif direction < 0.0:
 
 		sprite.flip_h = true
 		update_hitbox_direction(true)
 
 
-	# ------------------------------------------
-	# MOVIMIENTO HORIZONTAL
-	# ------------------------------------------
+	# --------------------------------------------------------
+	# MOVIMIENTO
+	# --------------------------------------------------------
 
-	if direction != 0:
+	if direction != 0.0:
 
 		position.x += direction * speed * delta
 
 
-	# ------------------------------------------
+	# --------------------------------------------------------
 	# LÍMITES DEL NIVEL
-	# ------------------------------------------
+	# --------------------------------------------------------
 
 	position.x = clamp(
 		position.x,
@@ -169,9 +189,9 @@ func _process(delta: float) -> void:
 	)
 
 
-	# ------------------------------------------
+	# --------------------------------------------------------
 	# ANIMACIONES
-	# ------------------------------------------
+	# --------------------------------------------------------
 
 	if is_jumping:
 
@@ -182,7 +202,7 @@ func _process(delta: float) -> void:
 				sprite.play("jump")
 
 
-	elif direction != 0:
+	elif direction != 0.0:
 
 		if sprite.animation != "run":
 
@@ -196,13 +216,16 @@ func _process(delta: float) -> void:
 			sprite.play("idle")
 
 
-# ==========================================
+# ============================================================
 # SALTO
-# ==========================================
+# ============================================================
 
 func jump() -> void:
 
 	if is_jumping:
+		return
+
+	if dead:
 		return
 
 
@@ -216,9 +239,9 @@ func jump() -> void:
 		sprite.play("jump")
 
 
-# ==========================================
-# GRAVEDAD
-# ==========================================
+# ============================================================
+# GRAVEDAD / SALTO
+# ============================================================
 
 func process_jump(delta: float) -> void:
 
@@ -226,17 +249,14 @@ func process_jump(delta: float) -> void:
 		return
 
 
-	# IMPORTANTE:
-	# aquí usamos jump_gravity y no "gravity".
 	vertical_velocity += jump_gravity * delta
-
 
 	position.y += vertical_velocity * delta
 
 
-	# ------------------------------------------
+	# --------------------------------------------------------
 	# TOCAR EL SUELO
-	# ------------------------------------------
+	# --------------------------------------------------------
 
 	if position.y >= ground_y:
 
@@ -247,22 +267,27 @@ func process_jump(delta: float) -> void:
 		is_jumping = false
 
 
-		if not is_attacking and not is_hurt:
+		if not is_attacking and not is_hurt and not dead:
 
 			sprite.play("idle")
 
 
-# ==========================================
+# ============================================================
 # ATAQUE
-# ==========================================
+# ============================================================
 
 func attack() -> void:
+
+	if dead:
+		return
 
 	if not can_attack:
 		return
 
-
 	if is_attacking:
+		return
+
+	if is_hurt:
 		return
 
 
@@ -272,33 +297,34 @@ func attack() -> void:
 	enemies_hit.clear()
 
 
-	# ------------------------------------------
-	# ANIMACIÓN
-	# ------------------------------------------
+	# --------------------------------------------------------
+	# REPRODUCIR ATAQUE
+	# --------------------------------------------------------
 
 	sprite.play("attack")
 
 
-	# Esperar hasta el frame donde sale el puño.
+	# Esperar hasta el momento donde sale el puño.
 	await get_tree().create_timer(
 		hitbox_delay
 	).timeout
 
 
-	# Si recibimos daño mientras atacábamos,
-	# cancelamos el golpe.
-	if is_hurt:
+	# El ataque pudo ser cancelado porque Alonso recibió daño.
+	if dead or is_hurt:
 
 		attack_hitbox.monitoring = false
 
 		is_attacking = false
 
+		can_attack = true
+
 		return
 
 
-	# ------------------------------------------
-	# ACTIVAR PUÑO
-	# ------------------------------------------
+	# --------------------------------------------------------
+	# ACTIVAR HITBOX
+	# --------------------------------------------------------
 
 	attack_hitbox.monitoring = true
 
@@ -308,14 +334,17 @@ func attack() -> void:
 	).timeout
 
 
-	# ------------------------------------------
-	# DESACTIVAR PUÑO
-	# ------------------------------------------
+	# --------------------------------------------------------
+	# DESACTIVAR HITBOX
+	# --------------------------------------------------------
 
 	attack_hitbox.monitoring = false
 
 
-	# Esperar el resto de la animación.
+	# --------------------------------------------------------
+	# ESPERAR FINAL DE ANIMACIÓN
+	# --------------------------------------------------------
+
 	if sprite.animation == "attack":
 
 		await sprite.animation_finished
@@ -324,112 +353,263 @@ func attack() -> void:
 	is_attacking = false
 
 
-	# ------------------------------------------
+	# --------------------------------------------------------
 	# COOLDOWN
-	# ------------------------------------------
+	# --------------------------------------------------------
 
 	await get_tree().create_timer(
 		attack_cooldown
 	).timeout
 
 
+	if dead:
+		return
+
+
 	can_attack = true
-
-
-	# ------------------------------------------
-	# VOLVER A ANIMACIÓN NORMAL
-	# ------------------------------------------
 
 	update_animation_after_action()
 
 
-# ==========================================
-# HITBOX DEL PUÑO
-# ==========================================
+# ============================================================
+# DETECTAR GOLPE AL ENEMIGO
+# ============================================================
 
 func _on_attack_hitbox_body_entered(body: Node2D) -> void:
+
+	if dead:
+		return
 
 	if not is_attacking:
 		return
 
+	if not attack_hitbox.monitoring:
+		return
 
+
+	# Ya recibió daño con este mismo puñetazo.
 	if body in enemies_hit:
 		return
 
 
+	# Comprobar que realmente sea algo que recibe daño.
 	if body.has_method("take_damage"):
 
 		enemies_hit.append(body)
 
-		body.take_damage(attack_damage)
+		body.take_damage(
+			attack_damage,
+			global_position
+		)
 
 		print(
-			"Alonso golpeó a ",
+			"ALONSO golpeó a ",
 			body.name,
-			" por ",
-			attack_damage,
-			" de daño."
+			" | Daño: ",
+			attack_damage
 		)
 
 
-# ==========================================
-# GIRAR HITBOX
-# ==========================================
+# ============================================================
+# GIRAR HITBOX DEL PUÑO
+# ============================================================
 
 func update_hitbox_direction(facing_left: bool) -> void:
 
-	var hitbox_x: float = abs(
+	var hitbox_distance: float = abs(
 		attack_hitbox.position.x
 	)
 
 
 	if facing_left:
 
-		attack_hitbox.position.x = -hitbox_x
+		attack_hitbox.position.x = -hitbox_distance
+
 
 	else:
 
-		attack_hitbox.position.x = hitbox_x
+		attack_hitbox.position.x = hitbox_distance
 
 
-# ==========================================
+# ============================================================
 # RECIBIR DAÑO
-# ==========================================
+# ============================================================
 
-func hurt() -> void:
+func take_damage(
+	damage: int,
+	attacker_position: Vector2 = Vector2.ZERO
+) -> void:
 
-	if is_hurt:
+	if dead:
+		return
+
+	if invulnerable:
 		return
 
 
-	is_hurt = true
+	health -= damage
+
+	health = max(
+		health,
+		0
+	)
+
+
+	print(
+		"VIDA ALONSO: ",
+		health,
+		"/",
+		max_health
+	)
+
+
+	# --------------------------------------------------------
+	# CANCELAR ATAQUE
+	# --------------------------------------------------------
+
 	is_attacking = false
 
-	# Si estaba golpeando, cancelar hitbox.
 	attack_hitbox.monitoring = false
 
 
-	sprite.play("hurt")
+	# --------------------------------------------------------
+	# COMPROBAR KO
+	# --------------------------------------------------------
+
+	if health <= 0:
+
+		die()
+
+		return
 
 
-	await sprite.animation_finished
+	# --------------------------------------------------------
+	# HURT
+	# --------------------------------------------------------
+
+	is_hurt = true
+	invulnerable = true
+
+
+	# --------------------------------------------------------
+	# KNOCKBACK
+	# --------------------------------------------------------
+
+	if attacker_position != Vector2.ZERO:
+
+		if attacker_position.x < global_position.x:
+
+			position.x += knockback_force
+
+
+		else:
+
+			position.x -= knockback_force
+
+
+	position.x = clamp(
+		position.x,
+		left_limit,
+		right_limit
+	)
+
+
+	# --------------------------------------------------------
+	# ANIMACIÓN HURT
+	# --------------------------------------------------------
+
+	if sprite.sprite_frames.has_animation("hurt"):
+
+		sprite.play("hurt")
+
+		await sprite.animation_finished
+
+
+	else:
+
+		await get_tree().create_timer(0.20).timeout
+
+
+	if dead:
+		return
 
 
 	is_hurt = false
 
-
 	update_animation_after_action()
 
 
-# ==========================================
+	# --------------------------------------------------------
+	# INVULNERABILIDAD
+	# --------------------------------------------------------
+
+	await get_tree().create_timer(
+		invulnerability_time
+	).timeout
+
+
+	if not dead:
+
+		invulnerable = false
+
+
+# ============================================================
+# KO
+# ============================================================
+
+func die() -> void:
+
+	if dead:
+		return
+
+
+	dead = true
+
+	health = 0
+
+	is_attacking = false
+	is_hurt = false
+	can_attack = false
+	invulnerable = true
+
+	attack_hitbox.monitoring = false
+
+
+	print("ALONSO KO")
+
+
+	# Si después agregas una animación "ko",
+	# el código la utilizará automáticamente.
+
+	if sprite.sprite_frames.has_animation("ko"):
+
+		sprite.play("ko")
+
+
+	else:
+
+		sprite.play("hurt")
+
+
+# ============================================================
 # ACTUALIZAR ANIMACIÓN
-# ==========================================
+# ============================================================
 
 func update_animation_after_action() -> void:
+
+	if dead:
+		return
 
 	if is_hurt:
 		return
 
+	if is_attacking:
+		return
+
+
+	# --------------------------------------------------------
+	# SALTANDO
+	# --------------------------------------------------------
 
 	if is_jumping:
 
@@ -440,9 +620,14 @@ func update_animation_after_action() -> void:
 		return
 
 
+	# --------------------------------------------------------
+	# MOVIÉNDOSE DERECHA
+	# --------------------------------------------------------
+
 	if Input.is_action_pressed("move_right"):
 
 		sprite.flip_h = false
+
 		update_hitbox_direction(false)
 
 		sprite.play("run")
@@ -450,14 +635,23 @@ func update_animation_after_action() -> void:
 		return
 
 
+	# --------------------------------------------------------
+	# MOVIÉNDOSE IZQUIERDA
+	# --------------------------------------------------------
+
 	if Input.is_action_pressed("move_left"):
 
 		sprite.flip_h = true
+
 		update_hitbox_direction(true)
 
 		sprite.play("run")
 
 		return
 
+
+	# --------------------------------------------------------
+	# QUIETO
+	# --------------------------------------------------------
 
 	sprite.play("idle")

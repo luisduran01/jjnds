@@ -140,7 +140,7 @@ animations = [{
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_8k5m8"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_78bss"]
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_8k5m8"]
 
 [node name="enemy" type="CharacterBody2D" unique_id=499036325]
 script = ExtResource("1_hbwtw")
@@ -154,9 +154,9 @@ frame_progress = 1.0
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=2037409209]
 shape = SubResource("CapsuleShape2D_8k5m8")
 
-[node name="Area2D" type="Area2D" parent="." unique_id=384081477]
+[node name="AttackHitbox" type="Area2D" parent="." unique_id=384081477]
 
-[node name="CollisionShape2D2" type="CollisionShape2D" parent="." unique_id=988201512]
-shape = SubResource("RectangleShape2D_78bss")
+[node name="CollisionShape2D" type="CollisionShape2D" parent="AttackHitbox" unique_id=607276061]
+shape = SubResource("RectangleShape2D_8k5m8")
 
 [node name="VisibleOnScreenNotifier2D" type="VisibleOnScreenNotifier2D" parent="." unique_id=1234075072]
