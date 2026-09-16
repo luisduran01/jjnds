@@ -1,6 +1,14 @@
 extends CharacterBody2D
 
 # ============================================================
+# SEÑALES
+# ============================================================
+
+signal health_changed(health: int)
+signal died
+
+
+# ============================================================
 # CONFIGURACIÓN
 # ============================================================
 
@@ -32,8 +40,8 @@ var can_attack: bool = true
 var is_hurt: bool = false
 var dead: bool = false
 
-# Evita que un ataque del enemigo golpee
-# varias veces al jugador.
+# Evita golpear varias veces al jugador
+# durante un mismo ataque.
 var player_hit_this_attack: bool = false
 
 
@@ -53,13 +61,17 @@ func _ready() -> void:
 
 	health = max_health
 
+	# Avisar la vida inicial.
+	health_changed.emit(health)
+
+	# Hitbox apagada al comenzar.
 	attack_hitbox.monitoring = false
 
+	# Buscar al jugador.
 	player = get_tree().get_first_node_in_group("player")
 
-
+	# Animación inicial.
 	if sprite.sprite_frames.has_animation("idle"):
-
 		sprite.play("idle")
 
 
@@ -69,23 +81,31 @@ func _ready() -> void:
 
 func _physics_process(_delta: float) -> void:
 
+	# --------------------------------------------------------
+	# SI ESTÁ MUERTO
+	# --------------------------------------------------------
+
 	if dead:
+		velocity = Vector2.ZERO
 		return
 
 
 	# --------------------------------------------------------
-	# BUSCAR AL PLAYER SI TODAVÍA NO EXISTE
+	# BUSCAR AL PLAYER
 	# --------------------------------------------------------
 
-	if player == null:
+	if player == null or not is_instance_valid(player):
 
 		player = get_tree().get_first_node_in_group("player")
 
+		velocity.x = 0.0
+		move_and_slide()
+
 		return
 
 
 	# --------------------------------------------------------
-	# SI ALONSO ESTÁ KO
+	# SI EL PLAYER ESTÁ KO
 	# --------------------------------------------------------
 
 	if "dead" in player:
@@ -96,7 +116,10 @@ func _physics_process(_delta: float) -> void:
 
 			if not attacking and not is_hurt:
 
-				sprite.play("idle")
+				if sprite.sprite_frames.has_animation("idle"):
+
+					if sprite.animation != "idle":
+						sprite.play("idle")
 
 			move_and_slide()
 
@@ -104,7 +127,7 @@ func _physics_process(_delta: float) -> void:
 
 
 	# --------------------------------------------------------
-	# HURT / ATAQUE
+	# SI RECIBE DAÑO O ESTÁ ATACANDO
 	# --------------------------------------------------------
 
 	if is_hurt or attacking:
@@ -117,7 +140,7 @@ func _physics_process(_delta: float) -> void:
 
 
 	# --------------------------------------------------------
-	# DISTANCIA
+	# CALCULAR DISTANCIA
 	# --------------------------------------------------------
 
 	var distance_x: float = abs(
@@ -126,7 +149,7 @@ func _physics_process(_delta: float) -> void:
 
 
 	# --------------------------------------------------------
-	# MIRAR HACIA ALONSO
+	# MIRAR HACIA EL PLAYER
 	# --------------------------------------------------------
 
 	if player.global_position.x < global_position.x:
@@ -134,7 +157,6 @@ func _physics_process(_delta: float) -> void:
 		sprite.flip_h = true
 
 		update_hitbox_direction(true)
-
 
 	else:
 
@@ -144,7 +166,7 @@ func _physics_process(_delta: float) -> void:
 
 
 	# --------------------------------------------------------
-	# PERSEGUIR
+	# PERSEGUIR AL PLAYER
 	# --------------------------------------------------------
 
 	if distance_x > attack_distance:
@@ -156,9 +178,11 @@ func _physics_process(_delta: float) -> void:
 		velocity.x = direction * speed
 
 
-		if sprite.animation != "run":
+		if sprite.sprite_frames.has_animation("run"):
 
-			sprite.play("run")
+			if sprite.animation != "run":
+
+				sprite.play("run")
 
 
 	# --------------------------------------------------------
@@ -177,9 +201,11 @@ func _physics_process(_delta: float) -> void:
 
 		else:
 
-			if sprite.animation != "idle":
+			if sprite.sprite_frames.has_animation("idle"):
 
-				sprite.play("idle")
+				if sprite.animation != "idle":
+
+					sprite.play("idle")
 
 
 	move_and_slide()
@@ -212,11 +238,17 @@ func attack() -> void:
 	velocity.x = 0.0
 
 
-	sprite.play("attack")
+	# --------------------------------------------------------
+	# ANIMACIÓN DE ATAQUE
+	# --------------------------------------------------------
+
+	if sprite.sprite_frames.has_animation("attack"):
+
+		sprite.play("attack")
 
 
 	# --------------------------------------------------------
-	# ESPERAR HASTA QUE SALGA EL PUÑO
+	# ESPERAR A QUE SALGA EL PUÑO
 	# --------------------------------------------------------
 
 	await get_tree().create_timer(
@@ -224,13 +256,16 @@ func attack() -> void:
 	).timeout
 
 
+	# Si durante la espera murió o recibió daño,
+	# cancelar el ataque.
 	if dead or is_hurt:
 
 		attack_hitbox.monitoring = false
 
 		attacking = false
 
-		can_attack = true
+		if not dead:
+			can_attack = true
 
 		return
 
@@ -254,21 +289,37 @@ func attack() -> void:
 	attack_hitbox.monitoring = false
 
 
+	if dead:
+		return
+
+
 	# --------------------------------------------------------
-	# TERMINAR ANIMACIÓN
+	# ESPERAR FIN DE ANIMACIÓN
 	# --------------------------------------------------------
 
-	if sprite.animation == "attack":
+	if sprite.sprite_frames.has_animation("attack"):
 
-		await sprite.animation_finished
+		if sprite.animation == "attack":
+
+			await sprite.animation_finished
+
+
+	if dead:
+		return
 
 
 	attacking = false
 
 
-	if not dead and not is_hurt:
+	# --------------------------------------------------------
+	# VOLVER A IDLE
+	# --------------------------------------------------------
 
-		sprite.play("idle")
+	if not is_hurt:
+
+		if sprite.sprite_frames.has_animation("idle"):
+
+			sprite.play("idle")
 
 
 	# --------------------------------------------------------
@@ -286,7 +337,7 @@ func attack() -> void:
 
 
 # ============================================================
-# HITBOX DEL ENEMIGO TOCA A ALONSO
+# HITBOX DEL ENEMIGO TOCA AL PLAYER
 # ============================================================
 
 func _on_attack_hitbox_area_entered(area: Area2D) -> void:
@@ -303,6 +354,10 @@ func _on_attack_hitbox_area_entered(area: Area2D) -> void:
 	if player_hit_this_attack:
 		return
 
+
+	# --------------------------------------------------------
+	# HACER DAÑO
+	# --------------------------------------------------------
 
 	if area.has_method("take_damage"):
 
@@ -321,7 +376,7 @@ func _on_attack_hitbox_area_entered(area: Area2D) -> void:
 
 
 # ============================================================
-# GIRAR HITBOX
+# GIRAR HITBOX SEGÚN DIRECCIÓN
 # ============================================================
 
 func update_hitbox_direction(facing_left: bool) -> void:
@@ -334,7 +389,6 @@ func update_hitbox_direction(facing_left: bool) -> void:
 	if facing_left:
 
 		attack_hitbox.position.x = -hitbox_distance
-
 
 	else:
 
@@ -354,12 +408,23 @@ func take_damage(
 		return
 
 
+	# --------------------------------------------------------
+	# RESTAR VIDA
+	# --------------------------------------------------------
+
 	health -= damage_received
 
 	health = max(
 		health,
 		0
 	)
+
+
+	# --------------------------------------------------------
+	# ACTUALIZAR BARRA DE VIDA
+	# --------------------------------------------------------
+
+	health_changed.emit(health)
 
 
 	print(
@@ -380,7 +445,7 @@ func take_damage(
 
 
 	# --------------------------------------------------------
-	# KO
+	# COMPROBAR KO
 	# --------------------------------------------------------
 
 	if health <= 0:
@@ -391,10 +456,12 @@ func take_damage(
 
 
 	# --------------------------------------------------------
-	# HURT
+	# ESTADO HURT
 	# --------------------------------------------------------
 
 	is_hurt = true
+
+	velocity.x = 0.0
 
 
 	# --------------------------------------------------------
@@ -406,7 +473,6 @@ func take_damage(
 		if attacker_position.x < global_position.x:
 
 			global_position.x += knockback_force
-
 
 		else:
 
@@ -423,15 +489,20 @@ func take_damage(
 
 		await sprite.animation_finished
 
-
 	else:
 
-		await get_tree().create_timer(0.20).timeout
+		await get_tree().create_timer(
+			0.20
+		).timeout
 
 
 	if dead:
 		return
 
+
+	# --------------------------------------------------------
+	# TERMINAR HURT
+	# --------------------------------------------------------
 
 	is_hurt = false
 
@@ -442,7 +513,7 @@ func take_damage(
 
 
 # ============================================================
-# KO ENEMIGO
+# KO DEL ENEMIGO
 # ============================================================
 
 func die() -> void:
@@ -451,13 +522,40 @@ func die() -> void:
 		return
 
 
+	# --------------------------------------------------------
+	# MARCAR COMO MUERTO
+	# --------------------------------------------------------
+
 	dead = true
 
 	health = 0
 
+
+	# --------------------------------------------------------
+	# ACTUALIZAR HUD
+	# --------------------------------------------------------
+
+	health_changed.emit(health)
+
+
+	# --------------------------------------------------------
+	# AVISAR A MAIN QUE EL ENEMIGO MURIÓ
+	# --------------------------------------------------------
+
+	died.emit()
+
+
+	# --------------------------------------------------------
+	# DETENER TODO
+	# --------------------------------------------------------
+
 	attacking = false
+
 	can_attack = false
+
 	is_hurt = false
+
+	player_hit_this_attack = true
 
 	velocity = Vector2.ZERO
 
@@ -467,7 +565,10 @@ func die() -> void:
 	print("ENEMIGO KO")
 
 
-	# Si tienes animación KO úsala.
+	# --------------------------------------------------------
+	# ANIMACIÓN KO
+	# --------------------------------------------------------
+
 	if sprite.sprite_frames.has_animation("ko"):
 
 		sprite.play("ko")
@@ -475,17 +576,28 @@ func die() -> void:
 		await sprite.animation_finished
 
 
-	else:
+	# --------------------------------------------------------
+	# SI TODAVÍA NO TIENES KO, USAR HURT
+	# --------------------------------------------------------
 
-		# Temporalmente usamos hurt.
-		if sprite.sprite_frames.has_animation("hurt"):
+	elif sprite.sprite_frames.has_animation("hurt"):
 
-			sprite.play("hurt")
+		sprite.play("hurt")
 
-			await sprite.animation_finished
+		await sprite.animation_finished
 
 
-	# Pequeña pausa antes de desaparecer.
-	await get_tree().create_timer(0.35).timeout
+	# --------------------------------------------------------
+	# PEQUEÑA PAUSA
+	# --------------------------------------------------------
+
+	await get_tree().create_timer(
+		0.35
+	).timeout
+
+
+	# --------------------------------------------------------
+	# ELIMINAR ENEMIGO
+	# --------------------------------------------------------
 
 	queue_free()

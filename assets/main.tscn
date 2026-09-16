@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://c2c1xa77ijlgq"]
 
 [ext_resource type="PackedScene" uid="uid://cwdbgoxxcvbpx" path="res://assets/player.tscn" id="1_db5cl"]
+[ext_resource type="Script" uid="uid://dc5j3u8553ksb" path="res://assets/main.gd" id="1_j2eim"]
 [ext_resource type="Texture2D" uid="uid://pftfmcdn8j6s" path="res://assets/backgrounds/ChatGPT Image 9 sept 2026, 15_09_52.png" id="2_06ig3"]
 [ext_resource type="PackedScene" uid="uid://d2ns5ewnge2dg" path="res://assets/enemy.tscn" id="3_2d37k"]
 [ext_resource type="Texture2D" uid="uid://byhi3rqna05o8" path="res://assets/backgrounds/ChatGPT Image 16 sept 2026, 15_28_15.png" id="4_836ik"]
@@ -9,8 +10,10 @@
 size = Vector2(4000, 50)
 
 [node name="main" type="Node2D" unique_id=1920928341]
+script = ExtResource("1_j2eim")
 
 [node name="Player" parent="." unique_id=642783612 instance=ExtResource("1_db5cl")]
+position = Vector2(-64, 47)
 
 [node name="Background" type="Sprite2D" parent="." unique_id=706741201]
 z_index = -10
@@ -19,12 +22,14 @@ scale = Vector2(0.7144139, 0.81402767)
 texture = ExtResource("2_06ig3")
 
 [node name="suelo" type="StaticBody2D" parent="." unique_id=153054973]
+position = Vector2(488, 28)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="suelo" unique_id=658910857]
+position = Vector2(915, -59)
 shape = SubResource("RectangleShape2D_8k5m8")
 
 [node name="Enemy" parent="." unique_id=605335897 instance=ExtResource("3_2d37k")]
-position = Vector2(1052, 543)
+position = Vector2(1043, 614)
 
 [node name="Background2" type="Sprite2D" parent="." unique_id=361184150]
 
@@ -33,3 +38,23 @@ z_index = -10
 position = Vector2(1906, 381)
 scale = Vector2(0.8574851, 0.81528664)
 texture = ExtResource("4_836ik")
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1013499100]
+
+[node name="EnemyHealthBar" type="ProgressBar" parent="HUD" unique_id=367604402]
+anchors_preset = -1
+anchor_left = 0.10300001
+anchor_top = -0.2
+anchor_right = 0.10300001
+anchor_bottom = -0.2
+offset_left = -44.84001
+offset_top = 207.0
+offset_right = 771.16
+offset_bottom = 234.0
+
+[node name="PlayerHealthBar" type="ProgressBar" parent="HUD" unique_id=258262779]
+offset_left = 1789.0
+offset_top = 45.0
+offset_right = 2487.0
+offset_bottom = 72.0
+value = 100.0
