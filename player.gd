@@ -5,7 +5,7 @@ signal died
 
 
 # ============================================================
-# CONFIGURACIÓN - MOVIMIENTO
+# MOVIMIENTO
 # ============================================================
 
 @export var speed: float = 455.0
@@ -17,40 +17,48 @@ signal died
 
 
 # ============================================================
-# CONFIGURACIÓN - COMBATE
+# COMBATE
 # ============================================================
 
 @export var max_health: int = 100
-@export var attack_damage: int = 20
 
-@export var attack_cooldown: float = 0.15
+@export var jab_damage: int = 10
+@export var cross_damage: int = 20
+
+@export var jab_cooldown: float = 0.25
+@export var cross_cooldown: float = 0.45
+
 @export var hitbox_delay: float = 0.10
 @export var hitbox_active_time: float = 0.12
 
 @export var knockback_force: float = 70.0
-@export var invulnerability_time: float = 0.40
+@export var invulnerability_time: float = 0.35
+
+# 0.75 = bloquea 75% del daño
+@export var block_damage_reduction: float = 0.75
 
 
 # ============================================================
 # VARIABLES
 # ============================================================
 
-var screen_size: Vector2
+var health: int = 100
 
 var vertical_velocity: float = 0.0
 var ground_y: float = 0.0
 
-var health: int = 100
-
 var is_jumping: bool = false
 var is_attacking: bool = false
+var is_blocking: bool = false
 var is_hurt: bool = false
 
 var can_attack: bool = true
 var invulnerable: bool = false
 var dead: bool = false
 
-# Impide hacer daño varias veces con el mismo golpe.
+var current_attack_damage: int = 0
+
+# Evita golpear varias veces durante el mismo puñetazo
 var enemies_hit: Array[Node] = []
 
 
@@ -67,21 +75,16 @@ var enemies_hit: Array[Node] = []
 # ============================================================
 
 func _ready() -> void:
-	screen_size = get_viewport_rect().size
-
 	ground_y = position.y
-
 	health = max_health
 
 	add_to_group("player")
 
-	if attack_hitbox:
-		attack_hitbox.monitoring = false
+	attack_hitbox.monitoring = false
 
 	health_changed.emit(health)
 
-	if sprite.sprite_frames.has_animation("idle"):
-		sprite.play("idle")
+	play_animation("idle")
 
 
 # ============================================================
@@ -89,69 +92,63 @@ func _ready() -> void:
 # ============================================================
 
 func _process(delta: float) -> void:
-
-	# --------------------------------------------------------
-	# KO
-	# --------------------------------------------------------
-
 	if dead:
 		return
 
+	process_jump(delta)
+
+	if is_hurt:
+		return
 
 	# --------------------------------------------------------
-	# ATAQUE
+	# BLOQUEO
+	# --------------------------------------------------------
+
+	if Input.is_action_pressed("bloquear") and not is_attacking and not is_jumping:
+		is_blocking = true
+		play_animation("block")
+		return
+	else:
+		if is_blocking:
+			is_blocking = false
+			play_animation("idle")
+
+	# --------------------------------------------------------
+	# JAB
 	# --------------------------------------------------------
 
 	if Input.is_action_just_pressed("attack"):
-		if can_attack and not is_attacking and not is_hurt:
-			attack()
+		if can_attack and not is_attacking and not is_jumping:
+			jab()
+			return
 
+	# --------------------------------------------------------
+	# CROSS
+	# --------------------------------------------------------
+
+	if Input.is_action_just_pressed("attack-dere"):
+		if can_attack and not is_attacking and not is_jumping:
+			cross()
+			return
 
 	# --------------------------------------------------------
 	# SALTO
 	# --------------------------------------------------------
 
 	if Input.is_action_just_pressed("jump"):
-		if not is_jumping and not is_hurt and not is_attacking:
+		if not is_jumping and not is_attacking:
 			jump()
+			return
 
-
-	# --------------------------------------------------------
-	# GRAVEDAD
-	# --------------------------------------------------------
-
-	process_jump(delta)
-
-
-	# --------------------------------------------------------
-	# BLOQUEAR MOVIMIENTO DURANTE HURT
-	# --------------------------------------------------------
-
-	if is_hurt:
-		return
-
-
-	# --------------------------------------------------------
-	# BLOQUEAR MOVIMIENTO DURANTE ATAQUE
-	# --------------------------------------------------------
-
+	# No mover mientras golpea
 	if is_attacking:
 		return
-
 
 	# --------------------------------------------------------
 	# MOVIMIENTO
 	# --------------------------------------------------------
 
-	var direction: float = Input.get_axis(
-		"move_left",
-		"move_right"
-	)
-
-
-	# --------------------------------------------------------
-	# GIRAR PERSONAJE
-	# --------------------------------------------------------
+	var direction := Input.get_axis("move_left", "move_right")
 
 	if direction > 0.0:
 		sprite.flip_h = false
@@ -161,18 +158,8 @@ func _process(delta: float) -> void:
 		sprite.flip_h = true
 		update_hitbox_direction(true)
 
-
-	# --------------------------------------------------------
-	# MOVER
-	# --------------------------------------------------------
-
 	if direction != 0.0:
 		position.x += direction * speed * delta
-
-
-	# --------------------------------------------------------
-	# LÍMITES
-	# --------------------------------------------------------
 
 	position.x = clamp(
 		position.x,
@@ -180,45 +167,31 @@ func _process(delta: float) -> void:
 		right_limit
 	)
 
-
-	# --------------------------------------------------------
-	# ANIMACIONES
-	# --------------------------------------------------------
-
 	update_movement_animation(direction)
 
 
 # ============================================================
-# ANIMACIÓN DE MOVIMIENTO
+# ANIMACIONES
 # ============================================================
 
-func update_movement_animation(direction: float) -> void:
+func play_animation(animation_name: String) -> void:
+	if sprite.sprite_frames.has_animation(animation_name):
+		if sprite.animation != animation_name:
+			sprite.play(animation_name)
 
-	if dead or is_hurt or is_attacking:
+
+func update_movement_animation(direction: float) -> void:
+	if dead or is_hurt or is_attacking or is_blocking:
 		return
 
 	if is_jumping:
-
-		if sprite.sprite_frames.has_animation("jump"):
-			if sprite.animation != "jump":
-				sprite.play("jump")
-
+		play_animation("jump")
 		return
-
 
 	if direction != 0.0:
-
-		if sprite.sprite_frames.has_animation("run"):
-			if sprite.animation != "run":
-				sprite.play("run")
-
-		return
-
-
-	if sprite.sprite_frames.has_animation("idle"):
-
-		if sprite.animation != "idle":
-			sprite.play("idle")
+		play_animation("run")
+	else:
+		play_animation("idle")
 
 
 # ============================================================
@@ -226,66 +199,10 @@ func update_movement_animation(direction: float) -> void:
 # ============================================================
 
 func jump() -> void:
-
 	if dead:
 		return
 
 	if is_jumping:
-		return
-
-	if is_hurt:
-		return
-
-	is_jumping = true
-
-	vertical_velocity = -jump_force
-
-	if sprite.sprite_frames.has_animation("jump"):
-		sprite.play("jump")
-
-
-# ============================================================
-# GRAVEDAD / SALTO
-# ============================================================
-
-func process_jump(delta: float) -> void:
-
-	if not is_jumping:
-		return
-
-	vertical_velocity += jump_gravity * delta
-
-	position.y += vertical_velocity * delta
-
-
-	# --------------------------------------------------------
-	# TOCAR SUELO
-	# --------------------------------------------------------
-
-	if position.y >= ground_y:
-
-		position.y = ground_y
-
-		vertical_velocity = 0.0
-
-		is_jumping = false
-
-		if not is_attacking and not is_hurt and not dead:
-
-			if sprite.sprite_frames.has_animation("idle"):
-				sprite.play("idle")
-
-
-# ============================================================
-# ATAQUE
-# ============================================================
-
-func attack() -> void:
-
-	if dead:
-		return
-
-	if not can_attack:
 		return
 
 	if is_attacking:
@@ -294,106 +211,147 @@ func attack() -> void:
 	if is_hurt:
 		return
 
+	if is_blocking:
+		return
+
+	is_jumping = true
+	vertical_velocity = -jump_force
+
+	play_animation("jump")
+
+
+func process_jump(delta: float) -> void:
+	if not is_jumping:
+		return
+
+	vertical_velocity += jump_gravity * delta
+	position.y += vertical_velocity * delta
+
+	if position.y >= ground_y:
+		position.y = ground_y
+		vertical_velocity = 0.0
+		is_jumping = false
+
+		if not dead and not is_attacking and not is_hurt:
+			play_animation("idle")
+
+
+# ============================================================
+# JAB
+# ============================================================
+
+func jab() -> void:
+	if dead or is_hurt or is_attacking or is_blocking:
+		return
+
+	if not can_attack:
+		return
 
 	is_attacking = true
 	can_attack = false
 
+	current_attack_damage = jab_damage
 	enemies_hit.clear()
 
+	play_animation("attack")
 
-	# --------------------------------------------------------
-	# ANIMACIÓN ATTACK
-	# --------------------------------------------------------
-
-	if sprite.sprite_frames.has_animation("attack"):
-		sprite.play("attack")
-
-
-	# --------------------------------------------------------
-	# ESPERAR MOMENTO DEL PUÑETAZO
-	# --------------------------------------------------------
-
-	await get_tree().create_timer(
-		hitbox_delay
-	).timeout
-
-
-	# Alonso pudo recibir daño durante la espera.
-	if dead or is_hurt:
-
-		if attack_hitbox:
-			attack_hitbox.monitoring = false
-
-		is_attacking = false
-
-		if not dead:
-			can_attack = true
-
-		return
-
-
-	# --------------------------------------------------------
-	# ACTIVAR HITBOX
-	# --------------------------------------------------------
-
-	if attack_hitbox:
-		attack_hitbox.monitoring = true
-
-
-	await get_tree().create_timer(
-		hitbox_active_time
-	).timeout
-
-
-	# --------------------------------------------------------
-	# DESACTIVAR HITBOX
-	# --------------------------------------------------------
-
-	if attack_hitbox:
-		attack_hitbox.monitoring = false
-
-
-	# --------------------------------------------------------
-	# ESPERAR ANIMACIÓN
-	# --------------------------------------------------------
-
-	if sprite.sprite_frames.has_animation("attack"):
-
-		if sprite.animation == "attack":
-			await sprite.animation_finished
-
-
-	is_attacking = false
-
-
-	# --------------------------------------------------------
-	# COOLDOWN
-	# --------------------------------------------------------
-
-	await get_tree().create_timer(
-		attack_cooldown
-	).timeout
-
+	await execute_punch()
 
 	if dead:
 		return
 
+	is_attacking = false
+
+	await get_tree().create_timer(jab_cooldown).timeout
+
+	if dead:
+		return
 
 	can_attack = true
-
 	update_animation_after_action()
 
 
 # ============================================================
-# HITBOX DEL ATAQUE
+# CROSS
 # ============================================================
 
-func _on_attack_hitbox_body_entered(body: Node2D) -> void:
+func cross() -> void:
+	if dead or is_hurt or is_attacking or is_blocking:
+		return
+
+	if not can_attack:
+		return
+
+	is_attacking = true
+	can_attack = false
+
+	current_attack_damage = cross_damage
+	enemies_hit.clear()
+
+	play_animation("cross")
+
+	await execute_punch()
 
 	if dead:
 		return
 
-	if not is_attacking:
+	is_attacking = false
+
+	await get_tree().create_timer(cross_cooldown).timeout
+
+	if dead:
+		return
+
+	can_attack = true
+	update_animation_after_action()
+
+
+# ============================================================
+# EJECUTAR GOLPE
+# ============================================================
+
+func execute_punch() -> void:
+	await get_tree().create_timer(hitbox_delay).timeout
+
+	if dead or is_hurt:
+		attack_hitbox.monitoring = false
+		return
+
+	attack_hitbox.monitoring = true
+
+	# También revisamos las áreas que ya estaban dentro
+	# cuando se activó el hitbox.
+	for area in attack_hitbox.get_overlapping_areas():
+		try_hit_area(area)
+
+	for body in attack_hitbox.get_overlapping_bodies():
+		try_hit_body(body)
+
+	await get_tree().create_timer(hitbox_active_time).timeout
+
+	attack_hitbox.monitoring = false
+
+	if dead or is_hurt:
+		return
+
+	# Esperar un poco para que termine visualmente el golpe.
+	await get_tree().create_timer(0.12).timeout
+
+
+# ============================================================
+# HITBOX
+# ============================================================
+
+func _on_attack_hitbox_body_entered(body: Node2D) -> void:
+	try_hit_body(body)
+
+
+func _on_attack_hitbox_area_entered(area: Area2D) -> void:
+	try_hit_area(area)
+
+
+func try_hit_body(body: Node) -> void:
+	if dead or not is_attacking:
 		return
 
 	if not attack_hitbox.monitoring:
@@ -402,13 +360,11 @@ func _on_attack_hitbox_body_entered(body: Node2D) -> void:
 	if body in enemies_hit:
 		return
 
-
 	if body.has_method("take_damage"):
-
 		enemies_hit.append(body)
 
 		body.take_damage(
-			attack_damage,
+			current_attack_damage,
 			global_position
 		)
 
@@ -416,7 +372,29 @@ func _on_attack_hitbox_body_entered(body: Node2D) -> void:
 			"ALONSO golpeó a ",
 			body.name,
 			" | Daño: ",
-			attack_damage
+			current_attack_damage
+		)
+
+
+func try_hit_area(area: Area2D) -> void:
+	if dead or not is_attacking:
+		return
+
+	if not attack_hitbox.monitoring:
+		return
+
+	if area == self:
+		return
+
+	if area in enemies_hit:
+		return
+
+	if area.has_method("take_damage"):
+		enemies_hit.append(area)
+
+		area.take_damage(
+			current_attack_damage,
+			global_position
 		)
 
 
@@ -425,17 +403,10 @@ func _on_attack_hitbox_body_entered(body: Node2D) -> void:
 # ============================================================
 
 func update_hitbox_direction(facing_left: bool) -> void:
-
-	if not attack_hitbox:
-		return
-
-	var hitbox_distance: float = abs(
-		attack_hitbox.position.x
-	)
+	var hitbox_distance: int = abs(attack_hitbox.position.x)
 
 	if facing_left:
 		attack_hitbox.position.x = -hitbox_distance
-
 	else:
 		attack_hitbox.position.x = hitbox_distance
 
@@ -455,20 +426,45 @@ func take_damage(
 	if invulnerable:
 		return
 
+	# --------------------------------------------------------
+	# BLOQUEO
+	# --------------------------------------------------------
+
+	if is_blocking:
+		var original_damage := amount
+
+		amount = max(
+			1,
+			int(round(amount * (1.0 - block_damage_reduction)))
+		)
+
+		health -= amount
+		health = max(health, 0)
+
+		health_changed.emit(health)
+
+		print(
+			"BLOQUEO | Daño original: ",
+			original_damage,
+			" | Daño recibido: ",
+			amount,
+			" | Vida: ",
+			health
+		)
+
+		if health <= 0:
+			die()
+
+		return
 
 	# --------------------------------------------------------
-	# RESTAR VIDA
+	# DAÑO NORMAL
 	# --------------------------------------------------------
 
 	health -= amount
-
-	health = max(
-		health,
-		0
-	)
+	health = max(health, 0)
 
 	health_changed.emit(health)
-
 
 	print(
 		"ALONSO recibió ",
@@ -479,50 +475,28 @@ func take_damage(
 		max_health
 	)
 
-
-	# --------------------------------------------------------
-	# CANCELAR ATAQUE
-	# --------------------------------------------------------
-
+	# Cancelar ataque
 	is_attacking = false
+	can_attack = true
 
-	if attack_hitbox:
-		attack_hitbox.monitoring = false
-
-
-	# --------------------------------------------------------
-	# COMPROBAR KO
-	# --------------------------------------------------------
+	attack_hitbox.monitoring = false
 
 	if health <= 0:
-
 		die()
-
 		return
-
-
-	# --------------------------------------------------------
-	# ESTADO HURT
-	# --------------------------------------------------------
 
 	is_hurt = true
 	invulnerable = true
-
 
 	# --------------------------------------------------------
 	# KNOCKBACK
 	# --------------------------------------------------------
 
 	if attacker_position != Vector2.ZERO:
-
 		if attacker_position.x < global_position.x:
-
 			position.x += knockback_force
-
 		else:
-
 			position.x -= knockback_force
-
 
 	position.x = clamp(
 		position.x,
@@ -530,168 +504,81 @@ func take_damage(
 		right_limit
 	)
 
+	play_animation("hurt")
 
-	# --------------------------------------------------------
-	# ANIMACIÓN HURT
-	# --------------------------------------------------------
-
-	if sprite.sprite_frames.has_animation("hurt"):
-
-		sprite.play("hurt")
-
-		await sprite.animation_finished
-
-	else:
-
-		await get_tree().create_timer(0.20).timeout
-
+	await get_tree().create_timer(0.25).timeout
 
 	if dead:
 		return
-
 
 	is_hurt = false
 
 	update_animation_after_action()
 
-
-	# --------------------------------------------------------
-	# INVULNERABILIDAD TEMPORAL
-	# --------------------------------------------------------
-
-	await get_tree().create_timer(
-		invulnerability_time
-	).timeout
-
+	await get_tree().create_timer(invulnerability_time).timeout
 
 	if not dead:
 		invulnerable = false
 
 
 # ============================================================
-# KO / MUERTE
+# KO
 # ============================================================
 
 func die() -> void:
-
 	if dead:
 		return
 
-
 	dead = true
-
 	health = 0
 
 	is_attacking = false
+	is_blocking = false
 	is_hurt = false
 
 	can_attack = false
 	invulnerable = true
 
-
-	if attack_hitbox:
-		attack_hitbox.monitoring = false
-
+	attack_hitbox.monitoring = false
 
 	health_changed.emit(health)
 
-
 	print("ALONSO KO")
 
-
-	# --------------------------------------------------------
-	# ANIMACIÓN DE MUERTE
-	# --------------------------------------------------------
-
 	if sprite.sprite_frames.has_animation("death"):
-
 		sprite.play("death")
 
-		await sprite.animation_finished
-
-
 	elif sprite.sprite_frames.has_animation("ko"):
-
 		sprite.play("ko")
 
-		await sprite.animation_finished
-
-
-	elif sprite.sprite_frames.has_animation("hurt"):
-
-		sprite.play("hurt")
-
-		await sprite.animation_finished
-
+	else:
+		play_animation("hurt")
 
 	died.emit()
 
-	print("ALONSO HA SIDO DERROTADO")
-
 
 # ============================================================
-# ACTUALIZAR ANIMACIÓN DESPUÉS DE UNA ACCIÓN
+# VOLVER A ANIMACIÓN NORMAL
 # ============================================================
 
 func update_animation_after_action() -> void:
-
-	if dead:
+	if dead or is_hurt or is_attacking or is_blocking:
 		return
-
-	if is_hurt:
-		return
-
-	if is_attacking:
-		return
-
-
-	# --------------------------------------------------------
-	# SALTO
-	# --------------------------------------------------------
 
 	if is_jumping:
-
-		if sprite.sprite_frames.has_animation("jump"):
-			sprite.play("jump")
-
+		play_animation("jump")
 		return
-
-
-	# --------------------------------------------------------
-	# DERECHA
-	# --------------------------------------------------------
 
 	if Input.is_action_pressed("move_right"):
-
 		sprite.flip_h = false
-
 		update_hitbox_direction(false)
-
-		if sprite.sprite_frames.has_animation("run"):
-			sprite.play("run")
-
+		play_animation("run")
 		return
-
-
-	# --------------------------------------------------------
-	# IZQUIERDA
-	# --------------------------------------------------------
 
 	if Input.is_action_pressed("move_left"):
-
 		sprite.flip_h = true
-
 		update_hitbox_direction(true)
-
-		if sprite.sprite_frames.has_animation("run"):
-			sprite.play("run")
-
+		play_animation("run")
 		return
 
-
-	# --------------------------------------------------------
-	# IDLE
-	# --------------------------------------------------------
-
-	if sprite.sprite_frames.has_animation("idle"):
-		sprite.play("idle")
+	play_animation("idle")

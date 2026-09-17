@@ -1,9 +1,5 @@
 extends CharacterBody2D
 
-# ============================================================
-# SEÑALES
-# ============================================================
-
 signal health_changed(health: int)
 signal died
 
@@ -14,7 +10,7 @@ signal died
 
 @export var speed: float = 120.0
 
-@export var attack_distance: float = 90.0
+@export var attack_distance: float = 100.0
 @export var attack_cooldown: float = 1.0
 
 @export var max_health: int = 100
@@ -40,8 +36,7 @@ var can_attack: bool = true
 var is_hurt: bool = false
 var dead: bool = false
 
-# Evita golpear varias veces al jugador
-# durante un mismo ataque.
+# Evita que un mismo ataque golpee varias veces.
 var player_hit_this_attack: bool = false
 
 
@@ -61,28 +56,23 @@ func _ready() -> void:
 
 	health = max_health
 
-	# Avisar la vida inicial.
-	health_changed.emit(health)
-
-	# Hitbox apagada al comenzar.
 	attack_hitbox.monitoring = false
 
-	# Buscar al jugador.
-	player = get_tree().get_first_node_in_group("player")
+	player = get_tree().get_first_node_in_group("player") as Node2D
 
-	# Animación inicial.
-	if sprite.sprite_frames.has_animation("idle"):
-		sprite.play("idle")
+	health_changed.emit(health)
+
+	play_animation("idle")
 
 
 # ============================================================
-# PHYSICS PROCESS
+# IA DEL ENEMIGO
 # ============================================================
 
 func _physics_process(_delta: float) -> void:
 
 	# --------------------------------------------------------
-	# SI ESTÁ MUERTO
+	# KO
 	# --------------------------------------------------------
 
 	if dead:
@@ -91,48 +81,42 @@ func _physics_process(_delta: float) -> void:
 
 
 	# --------------------------------------------------------
-	# BUSCAR AL PLAYER
+	# BUSCAR JUGADOR
 	# --------------------------------------------------------
 
 	if player == null or not is_instance_valid(player):
 
-		player = get_tree().get_first_node_in_group("player")
+		player = get_tree().get_first_node_in_group("player") as Node2D
 
-		velocity.x = 0.0
+		velocity = Vector2.ZERO
+
 		move_and_slide()
 
 		return
 
 
 	# --------------------------------------------------------
-	# SI EL PLAYER ESTÁ KO
+	# JUGADOR DERROTADO
 	# --------------------------------------------------------
 
-	if "dead" in player:
+	if player.get("dead") == true:
 
-		if player.dead:
+		velocity = Vector2.ZERO
 
-			velocity.x = 0.0
+		play_animation("idle")
 
-			if not attacking and not is_hurt:
+		move_and_slide()
 
-				if sprite.sprite_frames.has_animation("idle"):
-
-					if sprite.animation != "idle":
-						sprite.play("idle")
-
-			move_and_slide()
-
-			return
+		return
 
 
 	# --------------------------------------------------------
-	# SI RECIBE DAÑO O ESTÁ ATACANDO
+	# NO MOVERSE MIENTRAS ATACA O RECIBE GOLPE
 	# --------------------------------------------------------
 
 	if is_hurt or attacking:
 
-		velocity.x = 0.0
+		velocity = Vector2.ZERO
 
 		move_and_slide()
 
@@ -143,13 +127,13 @@ func _physics_process(_delta: float) -> void:
 	# CALCULAR DISTANCIA
 	# --------------------------------------------------------
 
-	var distance_x: float = abs(
+	var distance_x: float = absf(
 		player.global_position.x - global_position.x
 	)
 
 
 	# --------------------------------------------------------
-	# MIRAR HACIA EL PLAYER
+	# MIRAR HACIA EL JUGADOR
 	# --------------------------------------------------------
 
 	if player.global_position.x < global_position.x:
@@ -166,23 +150,18 @@ func _physics_process(_delta: float) -> void:
 
 
 	# --------------------------------------------------------
-	# PERSEGUIR AL PLAYER
+	# ACERCARSE AL JUGADOR
 	# --------------------------------------------------------
 
 	if distance_x > attack_distance:
 
-		var direction: float = sign(
+		var direction: float = signf(
 			player.global_position.x - global_position.x
 		)
 
 		velocity.x = direction * speed
 
-
-		if sprite.sprite_frames.has_animation("run"):
-
-			if sprite.animation != "run":
-
-				sprite.play("run")
+		play_animation("run")
 
 
 	# --------------------------------------------------------
@@ -193,22 +172,29 @@ func _physics_process(_delta: float) -> void:
 
 		velocity.x = 0.0
 
-
 		if can_attack:
 
 			attack()
 
-
 		else:
 
-			if sprite.sprite_frames.has_animation("idle"):
-
-				if sprite.animation != "idle":
-
-					sprite.play("idle")
+			play_animation("idle")
 
 
 	move_and_slide()
+
+
+# ============================================================
+# REPRODUCIR ANIMACIONES
+# ============================================================
+
+func play_animation(animation_name: String) -> void:
+
+	if sprite.sprite_frames.has_animation(animation_name):
+
+		if sprite.animation != animation_name:
+
+			sprite.play(animation_name)
 
 
 # ============================================================
@@ -235,20 +221,18 @@ func attack() -> void:
 
 	player_hit_this_attack = false
 
-	velocity.x = 0.0
+	velocity = Vector2.ZERO
 
 
 	# --------------------------------------------------------
-	# ANIMACIÓN DE ATAQUE
+	# ANIMACIÓN ATTACK
 	# --------------------------------------------------------
 
-	if sprite.sprite_frames.has_animation("attack"):
-
-		sprite.play("attack")
+	play_animation("attack")
 
 
 	# --------------------------------------------------------
-	# ESPERAR A QUE SALGA EL PUÑO
+	# ESPERAR HASTA EL MOMENTO DEL GOLPE
 	# --------------------------------------------------------
 
 	await get_tree().create_timer(
@@ -256,8 +240,7 @@ func attack() -> void:
 	).timeout
 
 
-	# Si durante la espera murió o recibió daño,
-	# cancelar el ataque.
+	# Si fue golpeado o murió mientras preparaba el ataque
 	if dead or is_hurt:
 
 		attack_hitbox.monitoring = false
@@ -277,6 +260,16 @@ func attack() -> void:
 	attack_hitbox.monitoring = true
 
 
+	# Comprobar inmediatamente si el jugador ya está dentro
+	for area: Area2D in attack_hitbox.get_overlapping_areas():
+
+		try_hit_player(area)
+
+
+	# --------------------------------------------------------
+	# HITBOX ACTIVA
+	# --------------------------------------------------------
+
 	await get_tree().create_timer(
 		hitbox_active_time
 	).timeout
@@ -293,15 +286,8 @@ func attack() -> void:
 		return
 
 
-	# --------------------------------------------------------
-	# ESPERAR FIN DE ANIMACIÓN
-	# --------------------------------------------------------
-
-	if sprite.sprite_frames.has_animation("attack"):
-
-		if sprite.animation == "attack":
-
-			await sprite.animation_finished
+	# Pequeño tiempo para terminar visualmente el golpe
+	await get_tree().create_timer(0.15).timeout
 
 
 	if dead:
@@ -317,9 +303,7 @@ func attack() -> void:
 
 	if not is_hurt:
 
-		if sprite.sprite_frames.has_animation("idle"):
-
-			sprite.play("idle")
+		play_animation("idle")
 
 
 	# --------------------------------------------------------
@@ -337,10 +321,19 @@ func attack() -> void:
 
 
 # ============================================================
-# HITBOX DEL ENEMIGO TOCA AL PLAYER
+# HITBOX DEL ENEMIGO
 # ============================================================
 
 func _on_attack_hitbox_area_entered(area: Area2D) -> void:
+
+	try_hit_player(area)
+
+
+# ============================================================
+# INTENTAR GOLPEAR AL JUGADOR
+# ============================================================
+
+func try_hit_player(area: Area2D) -> void:
 
 	if dead:
 		return
@@ -356,7 +349,7 @@ func _on_attack_hitbox_area_entered(area: Area2D) -> void:
 
 
 	# --------------------------------------------------------
-	# HACER DAÑO
+	# COMPROBAR QUE SEA EL JUGADOR
 	# --------------------------------------------------------
 
 	if area.has_method("take_damage"):
@@ -368,20 +361,19 @@ func _on_attack_hitbox_area_entered(area: Area2D) -> void:
 			global_position
 		)
 
-
 		print(
-			"ENEMIGO golpeó a ALONSO | Daño: ",
+			"ENEMIGO golpeó al jugador | Daño: ",
 			damage
 		)
 
 
 # ============================================================
-# GIRAR HITBOX SEGÚN DIRECCIÓN
+# GIRAR HITBOX
 # ============================================================
 
 func update_hitbox_direction(facing_left: bool) -> void:
 
-	var hitbox_distance: float = abs(
+	var hitbox_distance: float = absf(
 		attack_hitbox.position.x
 	)
 
@@ -414,14 +406,14 @@ func take_damage(
 
 	health -= damage_received
 
-	health = max(
+	health = maxi(
 		health,
 		0
 	)
 
 
 	# --------------------------------------------------------
-	# ACTUALIZAR BARRA DE VIDA
+	# ACTUALIZAR HUD
 	# --------------------------------------------------------
 
 	health_changed.emit(health)
@@ -440,6 +432,8 @@ func take_damage(
 	# --------------------------------------------------------
 
 	attacking = false
+
+	can_attack = true
 
 	attack_hitbox.monitoring = false
 
@@ -461,7 +455,7 @@ func take_damage(
 
 	is_hurt = true
 
-	velocity.x = 0.0
+	velocity = Vector2.ZERO
 
 
 	# --------------------------------------------------------
@@ -483,17 +477,12 @@ func take_damage(
 	# ANIMACIÓN HURT
 	# --------------------------------------------------------
 
-	if sprite.sprite_frames.has_animation("hurt"):
+	play_animation("hurt")
 
-		sprite.play("hurt")
 
-		await sprite.animation_finished
-
-	else:
-
-		await get_tree().create_timer(
-			0.20
-		).timeout
+	await get_tree().create_timer(
+		0.25
+	).timeout
 
 
 	if dead:
@@ -506,14 +495,11 @@ func take_damage(
 
 	is_hurt = false
 
-
-	if sprite.sprite_frames.has_animation("idle"):
-
-		sprite.play("idle")
+	play_animation("idle")
 
 
 # ============================================================
-# KO DEL ENEMIGO
+# KO
 # ============================================================
 
 func die() -> void:
@@ -522,37 +508,12 @@ func die() -> void:
 		return
 
 
-	# --------------------------------------------------------
-	# MARCAR COMO MUERTO
-	# --------------------------------------------------------
-
 	dead = true
 
 	health = 0
 
-
-	# --------------------------------------------------------
-	# ACTUALIZAR HUD
-	# --------------------------------------------------------
-
-	health_changed.emit(health)
-
-
-	# --------------------------------------------------------
-	# AVISAR A MAIN QUE EL ENEMIGO MURIÓ
-	# --------------------------------------------------------
-
-	died.emit()
-
-
-	# --------------------------------------------------------
-	# DETENER TODO
-	# --------------------------------------------------------
-
 	attacking = false
-
 	can_attack = false
-
 	is_hurt = false
 
 	player_hit_this_attack = true
@@ -560,6 +521,13 @@ func die() -> void:
 	velocity = Vector2.ZERO
 
 	attack_hitbox.monitoring = false
+
+
+	# --------------------------------------------------------
+	# ACTUALIZAR HUD
+	# --------------------------------------------------------
+
+	health_changed.emit(health)
 
 
 	print("ENEMIGO KO")
@@ -573,31 +541,19 @@ func die() -> void:
 
 		sprite.play("ko")
 
-		await sprite.animation_finished
+	elif sprite.sprite_frames.has_animation("death"):
 
-
-	# --------------------------------------------------------
-	# SI TODAVÍA NO TIENES KO, USAR HURT
-	# --------------------------------------------------------
+		sprite.play("death")
 
 	elif sprite.sprite_frames.has_animation("hurt"):
 
 		sprite.play("hurt")
 
-		await sprite.animation_finished
-
 
 	# --------------------------------------------------------
-	# PEQUEÑA PAUSA
+	# AVISAR AL MAIN
 	# --------------------------------------------------------
 
-	await get_tree().create_timer(
-		0.35
-	).timeout
+	died.emit()
 
-
-	# --------------------------------------------------------
-	# ELIMINAR ENEMIGO
-	# --------------------------------------------------------
-
-	queue_free()
+	print("ENEMIGO DERROTADO")

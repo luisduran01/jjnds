@@ -5,6 +5,7 @@
 [ext_resource type="Texture2D" uid="uid://pftfmcdn8j6s" path="res://assets/backgrounds/ChatGPT Image 9 sept 2026, 15_09_52.png" id="2_06ig3"]
 [ext_resource type="PackedScene" uid="uid://d2ns5ewnge2dg" path="res://assets/enemy.tscn" id="3_2d37k"]
 [ext_resource type="Texture2D" uid="uid://byhi3rqna05o8" path="res://assets/backgrounds/ChatGPT Image 16 sept 2026, 15_28_15.png" id="4_836ik"]
+[ext_resource type="Texture2D" uid="uid://djylenl1285pm" path="res://samurai/FREE_Samurai 2D Pixel Art v1.2/Sprites/ring.png" id="6_ujfqy"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_8k5m8"]
 size = Vector2(4000, 50)
@@ -17,8 +18,8 @@ position = Vector2(-64, 47)
 
 [node name="Background" type="Sprite2D" parent="." unique_id=706741201]
 z_index = -10
-position = Vector2(599.75, 381)
-scale = Vector2(0.7144139, 0.81402767)
+position = Vector2(2138, 354.49997)
+scale = Vector2(0.59061, 0.7640808)
 texture = ExtResource("2_06ig3")
 
 [node name="suelo" type="StaticBody2D" parent="." unique_id=153054973]
@@ -29,14 +30,14 @@ position = Vector2(915, -59)
 shape = SubResource("RectangleShape2D_8k5m8")
 
 [node name="Enemy" parent="." unique_id=605335897 instance=ExtResource("3_2d37k")]
-position = Vector2(1043, 614)
+position = Vector2(815, 581)
 
 [node name="Background2" type="Sprite2D" parent="." unique_id=361184150]
 
 [node name="ChatGptImage16Sept2026,152815" type="Sprite2D" parent="." unique_id=1609350344]
 z_index = -10
-position = Vector2(1906, 381)
-scale = Vector2(0.8574851, 0.81528664)
+position = Vector2(3109, 350)
+scale = Vector2(0.5628743, 0.75583863)
 texture = ExtResource("4_836ik")
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=1013499100]
@@ -47,14 +48,91 @@ anchor_left = 0.10300001
 anchor_top = -0.2
 anchor_right = 0.10300001
 anchor_bottom = -0.2
-offset_left = -44.84001
-offset_top = 207.0
-offset_right = 771.16
-offset_bottom = 234.0
+offset_left = 891.16
+offset_top = 212.0
+offset_right = 1112.16
+offset_bottom = 258.0
+theme_override_font_sizes/font_size = 20
 
 [node name="PlayerHealthBar" type="ProgressBar" parent="HUD" unique_id=258262779]
-offset_left = 1789.0
-offset_top = 45.0
-offset_right = 2487.0
-offset_bottom = 72.0
+custom_minimum_size = Vector2(1, 0)
+anchors_preset = -1
+anchor_left = 0.45800003
+anchor_top = -0.157
+anchor_right = 0.45800003
+anchor_bottom = -0.157
+offset_left = -571.24005
+offset_top = 181.04001
+offset_right = -374.24005
+offset_bottom = 227.04
+theme_override_font_sizes/font_size = 20
 value = 100.0
+
+[node name="PlayerName" type="Label" parent="HUD" unique_id=268800149]
+offset_left = 20.0
+offset_top = 120.0
+offset_right = 123.0
+offset_bottom = 180.0
+theme_override_font_sizes/font_size = 24
+text = "Alonso"
+
+[node name="RoundLabel" type="Label" parent="HUD" unique_id=208401375]
+offset_left = 550.0
+offset_top = 5.0
+offset_right = 708.0
+offset_bottom = 54.0
+theme_override_colors/font_color = Color(0.3487541, 1, 0.07770143, 1)
+theme_override_font_sizes/font_size = 35
+text = "ROUND 1"
+
+[node name="TimerLabel" type="Label" parent="HUD" unique_id=487592722]
+offset_left = 583.0
+offset_top = 50.0
+offset_right = 662.0
+offset_bottom = 92.0
+theme_override_colors/font_color = Color(0.91438794, 0.9723882, 0.9999997, 1)
+theme_override_font_sizes/font_size = 30
+text = "2:00"
+
+[node name="EnemyName" type="Label" parent="HUD" unique_id=1362637301]
+offset_left = 1179.0
+offset_top = 123.0
+offset_right = 1262.0
+offset_bottom = 165.0
+theme_override_font_sizes/font_size = 24
+text = "RIVAL"
+
+[node name="PlayerStaminaBar" type="ProgressBar" parent="HUD" unique_id=1206230002]
+offset_left = 18.0
+offset_top = 165.0
+offset_right = 81.0
+offset_bottom = 211.0
+theme_override_colors/font_color = Color(0.7921569, 0.84705883, 0.105882354, 1)
+theme_override_colors/font_outline_color = Color(0.76020277, 3.706068e-06, 4.813075e-07, 1)
+theme_override_font_sizes/font_size = 30
+
+[node name="EnemyStaminaBar" type="ProgressBar" parent="HUD" unique_id=744987995]
+offset_left = 1175.0
+offset_top = 156.0
+offset_right = 1247.0
+offset_bottom = 202.0
+theme_override_colors/font_color = Color(0.9490196, 0.9490196, 0.29411766, 1)
+theme_override_font_sizes/font_size = 30
+
+[node name="Ring" type="Node2D" parent="." unique_id=25003049]
+position = Vector2(-106, -1)
+
+[node name="RingFloor" type="Sprite2D" parent="Ring" unique_id=1523857774]
+z_index = -2
+position = Vector2(928.0001, 359.00003)
+scale = Vector2(0.985646, 1.600501)
+texture = ExtResource("6_ujfqy")
+
+[node name="BackRopes" type="Sprite2D" parent="Ring" unique_id=1805794285]
+visible = false
+z_index = -1
+position = Vector2(2740, 609)
+
+[node name="FrontRopes" type="Sprite2D" parent="Ring" unique_id=1918350791]
+visible = false
+z_index = 1

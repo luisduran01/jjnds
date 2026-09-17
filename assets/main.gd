@@ -1,5 +1,6 @@
 extends Node2D
 
+
 @onready var player = $Player
 @onready var enemy = $Enemy
 
@@ -8,7 +9,6 @@ extends Node2D
 
 
 func _ready() -> void:
-
 	player_health_bar.max_value = player.max_health
 	player_health_bar.value = player.health
 
