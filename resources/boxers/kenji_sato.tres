@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="BoxerData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/boxer/boxer_data.gd" id="1_bd1"]
+
+[resource]
+script = ExtResource("1_bd1")
+boxer_name = "Kenji Sato"
+nickname = "The Dragon"
+country = "Japan"
+age = 28
+height = 176.0
+reach = 179.0
+weight = 147.0
+overall = 82
+health = 105
+stamina_max = 100.0
+power = 76
+speed = 82
+defense = 85
+chin = 78
+body_resistance = 78
+accuracy = 85
+movement = 85
+recovery = 80
+jab_power = 11
+cross_power = 23
+hook_power = 29
+uppercut_power = 34
+body_shot_power = 18
+jab_cost = 8.0
+cross_cost = 15.0
+hook_cost = 20.0
+uppercut_cost = 25.0
+body_shot_cost = 12.0
+jab_cooldown = 0.23
+cross_cooldown = 0.42
+hook_cooldown = 0.48
+uppercut_cooldown = 0.58
+body_shot_cooldown = 0.38
+stamina_regen_rate = 24.0
+ai_style = 4

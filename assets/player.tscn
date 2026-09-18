@@ -163,7 +163,7 @@ radius = 80.0
 height = 330.0
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_8k5m8"]
-size = Vector2(49, 97.5)
+size = Vector2(62.5, 107)
 
 [node name="Player" type="Area2D" unique_id=642783612 groups=["player"]]
 script = ExtResource("1_mxi64")
@@ -180,9 +180,9 @@ shape = SubResource("CapsuleShape2D_8k5m8")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1662961132]
 position = Vector2(642, 358)
-limit_left = 0
+limit_left = -11
 limit_top = -7
-limit_right = 3448
+limit_right = 1293
 limit_bottom = 720
 position_smoothing_enabled = true
 
@@ -191,7 +191,7 @@ position = Vector2(273, 482)
 monitoring = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="AttackHitbox" unique_id=381999]
-position = Vector2(-3, -5)
+position = Vector2(3.75, 24.5)
 shape = SubResource("RectangleShape2D_8k5m8")
 
 [connection signal="body_entered" from="AttackHitbox" to="." method="_on_attack_hitbox_body_entered"]

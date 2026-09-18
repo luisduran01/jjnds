@@ -11,9 +11,17 @@ config_version=5
 [application]
 
 config/name="juego"
-run/main_scene="uid://c2c1xa77ijlgq"
+run/main_scene="res://scenes/menus/main_menu.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
+
+[autoload]
+
+_mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
+GameManager="*uid://i6ja4xg57tkk"
+SoundManager="*uid://bdbiogtgydgia"
+TransitionManager="*uid://dbswat4sxt3kc"
+CinematicManager="*res://scripts/managers/cinematic_manager.gd"
 
 [display]
 
@@ -21,6 +29,10 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg")
 
 [input]
 

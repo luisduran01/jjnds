@@ -2,7 +2,7 @@
 
 [ext_resource type="PackedScene" uid="uid://cwdbgoxxcvbpx" path="res://assets/player.tscn" id="1_db5cl"]
 [ext_resource type="Script" uid="uid://dc5j3u8553ksb" path="res://assets/main.gd" id="1_j2eim"]
-[ext_resource type="Texture2D" uid="uid://pftfmcdn8j6s" path="res://assets/backgrounds/ChatGPT Image 9 sept 2026, 15_09_52.png" id="2_06ig3"]
+[ext_resource type="Texture2D" uid="uid://pftfmcdn8j6s" path="res://assets/sprites/gimnasio.png" id="2_06ig3"]
 [ext_resource type="PackedScene" uid="uid://d2ns5ewnge2dg" path="res://assets/enemy.tscn" id="3_2d37k"]
 [ext_resource type="Texture2D" uid="uid://byhi3rqna05o8" path="res://assets/backgrounds/ChatGPT Image 16 sept 2026, 15_28_15.png" id="4_836ik"]
 [ext_resource type="Texture2D" uid="uid://djylenl1285pm" path="res://samurai/FREE_Samurai 2D Pixel Art v1.2/Sprites/ring.png" id="6_ujfqy"]
@@ -17,6 +17,7 @@ script = ExtResource("1_j2eim")
 position = Vector2(-64, 47)
 
 [node name="Background" type="Sprite2D" parent="." unique_id=706741201]
+visible = false
 z_index = -10
 position = Vector2(2138, 354.49997)
 scale = Vector2(0.59061, 0.7640808)
@@ -35,6 +36,7 @@ position = Vector2(815, 581)
 [node name="Background2" type="Sprite2D" parent="." unique_id=361184150]
 
 [node name="ChatGptImage16Sept2026,152815" type="Sprite2D" parent="." unique_id=1609350344]
+visible = false
 z_index = -10
 position = Vector2(3109, 350)
 scale = Vector2(0.5628743, 0.75583863)

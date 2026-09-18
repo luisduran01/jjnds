@@ -1,0 +1,223 @@
+[gd_scene format=3 uid="uid://dxse3og0y5c60"]
+
+[ext_resource type="Script" uid="uid://jj3nkt62i0" path="res://scripts/menus/main_menu.gd" id="1_mm"]
+[ext_resource type="Texture2D" uid="uid://v5m6ciarud0q" path="res://assets/sprites/fondomenu.png" id="2_bg"]
+
+[node name="MainMenu" type="Control" unique_id=1112954769]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_mm")
+
+[node name="Background" type="Node2D" parent="." unique_id=499383007]
+
+[node name="ParallaxLayer" type="Node2D" parent="Background" unique_id=1658348289]
+
+[node name="BgRect" type="TextureRect" parent="Background/ParallaxLayer" unique_id=1514227385]
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+texture = ExtResource("2_bg")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Overlay" type="ColorRect" parent="Background/ParallaxLayer" unique_id=1548890026]
+offset_left = -200.0
+offset_top = -200.0
+offset_right = 2000.0
+offset_bottom = 1200.0
+mouse_filter = 2
+color = Color(0, 0, 0, 0.45)
+
+[node name="MenuFighter" type="Sprite2D" parent="Background" unique_id=2113971384]
+position = Vector2(850, 360)
+scale = Vector2(3, 3)
+
+[node name="ChampionBelt" type="Sprite2D" parent="Background" unique_id=970504164]
+visible = false
+position = Vector2(850, 500)
+scale = Vector2(2, 2)
+
+[node name="UI" type="Control" parent="." unique_id=1446585374]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Header" type="Control" parent="UI" unique_id=2047602801]
+anchors_preset = 0
+offset_left = 100.0
+offset_top = 80.0
+offset_right = 500.0
+offset_bottom = 200.0
+mouse_filter = 2
+
+[node name="TitleBoxing" type="Label" parent="UI/Header" unique_id=1902621741]
+layout_mode = 0
+offset_right = 400.0
+offset_bottom = 70.0
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_offset_x = 4
+theme_override_constants/shadow_offset_y = 4
+theme_override_font_sizes/font_size = 64
+text = "BOXING"
+
+[node name="TitleChamp" type="Label" parent="UI/Header" unique_id=746828826]
+layout_mode = 0
+offset_top = 70.0
+offset_right = 400.0
+offset_bottom = 100.0
+theme_override_colors/font_color = Color(0.85, 0.75, 0.3, 1)
+theme_override_font_sizes/font_size = 28
+text = "CHAMPIONSHIP"
+
+[node name="Line" type="ColorRect" parent="UI/Header" unique_id=2047891686]
+layout_mode = 0
+offset_top = 110.0
+offset_right = 350.0
+offset_bottom = 112.0
+mouse_filter = 2
+color = Color(1, 1, 1, 0.5)
+
+[node name="MenuPanel" type="VBoxContainer" parent="UI" unique_id=1602605309]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 250.0
+offset_right = 400.0
+offset_bottom = 600.0
+theme_override_constants/separation = 15
+
+[node name="btn_career" type="Button" parent="UI/MenuPanel" unique_id=606917640]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "CAREER"
+flat = true
+alignment = 0
+
+[node name="btn_quick" type="Button" parent="UI/MenuPanel" unique_id=728070926]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "QUICK FIGHT"
+flat = true
+alignment = 0
+
+[node name="btn_training" type="Button" parent="UI/MenuPanel" unique_id=1138532227]
+layout_mode = 2
+theme_override_colors/font_disabled_color = Color(0.4, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 24
+text = "TRAINING (SOON)"
+flat = true
+alignment = 0
+
+[node name="btn_roster" type="Button" parent="UI/MenuPanel" unique_id=1585270177]
+layout_mode = 2
+theme_override_colors/font_disabled_color = Color(0.4, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 24
+text = "FIGHTERS (SOON)"
+flat = true
+alignment = 0
+
+[node name="btn_options" type="Button" parent="UI/MenuPanel" unique_id=574828575]
+layout_mode = 2
+theme_override_colors/font_disabled_color = Color(0.4, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 24
+text = "OPTIONS (SOON)"
+flat = true
+alignment = 0
+
+[node name="btn_exit" type="Button" parent="UI/MenuPanel" unique_id=1285292979]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "EXIT"
+flat = true
+alignment = 0
+
+[node name="DescriptionPanel" type="Control" parent="UI" unique_id=1297260746]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 100.0
+offset_top = -150.0
+offset_right = 600.0
+offset_bottom = -50.0
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="DescLabel" type="Label" parent="UI/DescriptionPanel" unique_id=1753827140]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 18
+text = "Select an option."
+
+[node name="FighterInfo" type="Control" parent="UI" unique_id=907547560]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -100.0
+offset_right = -50.0
+offset_bottom = 100.0
+grow_horizontal = 0
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="FightCard" type="Label" parent="UI/FighterInfo" unique_id=550818647]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 20
+text = "BUILD YOUR LEGACY
+
+0-0-0
+BEGIN YOUR JOURNEY"
+horizontal_alignment = 2
+
+[node name="Footer" type="Control" parent="UI" unique_id=1003223360]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -120.0
+offset_right = -50.0
+offset_bottom = -20.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="ProfileLabel" type="Label" parent="UI/Footer" unique_id=155272900]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
+theme_override_font_sizes/font_size = 16
+text = "PLAYER
+ALONSO
+NEW CAREER"
+horizontal_alignment = 2
+vertical_alignment = 2
