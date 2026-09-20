@@ -45,7 +45,7 @@ func _ready() -> void:
 func _build_background() -> void:
 	# FIGHTCARD.PNG como fondo
 	var bg_tex = TextureRect.new()
-	var fightcard = load("res://assets/sprites/FIGHTCARD.PNG")
+	var fightcard = load("res://assets/sprites/FIGHTCARD.png")
 	if not fightcard:
 		fightcard = load("res://assets/sprites/fondoquick.png")
 	bg_tex.texture = fightcard
@@ -303,7 +303,8 @@ func _fill_center(panel: Control, p_data: BoxerData, e_data: BoxerData) -> void:
 	glow_l.anchor_left = 0.0; glow_l.anchor_top = 0.0
 	glow_l.anchor_right = 0.5; glow_l.anchor_bottom = 1.0
 	glow_l.mouse_filter = MOUSE_FILTER_IGNORE
-	panel.add_child_below_node(vs_lbl, glow_l)
+	panel.add_child(glow_l)
+	panel.move_child(glow_l, vs_lbl.get_index())
 
 	# Pink half of VS glow (right)
 	var glow_r = ColorRect.new()
@@ -311,7 +312,8 @@ func _fill_center(panel: Control, p_data: BoxerData, e_data: BoxerData) -> void:
 	glow_r.anchor_left = 0.5; glow_r.anchor_top = 0.0
 	glow_r.anchor_right = 1.0; glow_r.anchor_bottom = 1.0
 	glow_r.mouse_filter = MOUSE_FILTER_IGNORE
-	panel.add_child_below_node(vs_lbl, glow_r)
+	panel.add_child(glow_r)
+	panel.move_child(glow_r, vs_lbl.get_index())
 
 	# Center divider
 	var vert_div = ColorRect.new()
@@ -483,12 +485,10 @@ func _play_sequence() -> void:
 # INPUT & EXIT
 # ============================================================
 func _input(event: InputEvent) -> void:
-	if not can_continue or is_finished: return
-	var pressed = false
-	if event is InputEventKey       and event.pressed and not event.echo: pressed = true
-	elif event is InputEventMouseButton  and event.pressed:               pressed = true
-	elif event is InputEventJoypadButton and event.pressed:               pressed = true
-	if pressed: _go_to_ring()
+	if is_finished: return
+	if event.is_pressed() and not event.is_echo():
+		if event is InputEventKey or event is InputEventMouseButton or event is InputEventJoypadButton:
+			_go_to_ring()
 
 func _go_to_ring() -> void:
 	if is_finished: return
@@ -501,4 +501,7 @@ func _go_to_ring() -> void:
 	var tw = create_tween()
 	tw.tween_property(bg_overlay, "color:a", 1.0, 0.3)
 	await tw.finished
-	get_tree().change_scene_to_file("res://assets/main.tscn")
+	
+	var err = get_tree().change_scene_to_file("res://scenes/arena/fight_3d.tscn")
+	if err != OK:
+		print("ERROR CRÍTICO AL CARGAR fight_3d.tscn: ", err)

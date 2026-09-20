@@ -137,7 +137,8 @@ func _start_entrance() -> void:
 		portrait_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		portrait_rect.modulate.a = 0.0
 		# Put portrait behind text container
-		add_child_below_node(text_container, portrait_rect)
+		add_child(portrait_rect)
+		move_child(portrait_rect, text_container.get_index())
 
 	# ── SECUENCIA CINEMATOGRÁFICA ──────────────────────────────
 
@@ -206,4 +207,4 @@ func _finish_entrance() -> void:
 		tw.tween_property(bg_overlay, "color:a", 1.0, 0.5)
 		await tw.finished
 
-	get_tree().change_scene_to_file("res://assets/main.tscn")
+	get_tree().change_scene_to_file("res://scenes/arena/fight_3d.tscn")

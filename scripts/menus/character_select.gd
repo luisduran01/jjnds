@@ -44,6 +44,10 @@ func _ready() -> void:
 	_build_ui()
 	update_ui()
 	_play_entrance_animation()
+	
+	var sm = get_node_or_null("/root/SoundManager")
+	if sm and sm.has_method("play_bgm"):
+		sm.play_bgm("select")
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):

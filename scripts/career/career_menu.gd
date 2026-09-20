@@ -47,6 +47,10 @@ func _ready() -> void:
 		_show_new_career_select()
 		
 	_play_entrance_animation()
+	
+	var sm = get_node_or_null("/root/SoundManager")
+	if sm and sm.has_method("play_bgm"):
+		sm.play_bgm("career")
 
 func _input(event: InputEvent) -> void:
 	if is_transitioning: return

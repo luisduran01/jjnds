@@ -55,7 +55,7 @@ func _ready() -> void:
 			btn.add_child(sidebar)
 	
 	# Deshabilitar botones no implementados temporalmente (sin causar errores)
-	$UI/MenuPanel/btn_training.disabled = true
+	# $UI/MenuPanel/btn_training.disabled = true # Habilitado para modo 2D
 	$UI/MenuPanel/btn_roster.disabled = true
 	$UI/MenuPanel/btn_options.disabled = true
 	
@@ -65,6 +65,11 @@ func _ready() -> void:
 	# Focus initial
 	if btn_container.get_child_count() > 0:
 		btn_container.get_child(0).grab_focus()
+		
+	# Reproducir música del menú y encolar heavy
+	var sm = get_node_or_null("/root/SoundManager")
+	if sm and sm.has_method("play_bgm"):
+		sm.play_bgm("menu", "heavy")
 
 func _process(_delta: float) -> void:
 	if is_transitioning: return
@@ -186,6 +191,11 @@ func _on_btn_pressed(btn: Button) -> void:
 			if cm: cm.change_scene("res://scenes/menus/character_select.tscn")
 			elif tm: tm.change_scene("res://scenes/menus/character_select.tscn")
 			else: get_tree().change_scene_to_file("res://scenes/menus/character_select.tscn")
+		"btn_training":
+			# Lanzar el minijuego 2D
+			if cm: cm.change_scene("res://assets/main.tscn")
+			elif tm: tm.change_scene("res://assets/main.tscn")
+			else: get_tree().change_scene_to_file("res://assets/main.tscn")
 		"btn_exit":
 			if cm: 
 				await cm.fade_out(0.5)

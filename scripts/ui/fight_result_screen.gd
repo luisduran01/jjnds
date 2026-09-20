@@ -138,9 +138,9 @@ func _add_stat_row(left: VBoxContainer, center: VBoxContainer, right: VBoxContai
 func _on_rematch() -> void:
 	var cm = get_node_or_null("/root/CinematicManager")
 	if cm:
-		cm.change_scene("res://assets/main.tscn")
+		cm.change_scene("res://scenes/arena/fight_3d.tscn")
 	else:
-		get_tree().change_scene_to_file("res://assets/main.tscn")
+		get_tree().change_scene_to_file("res://scenes/arena/fight_3d.tscn")
 
 func _on_main_menu() -> void:
 	var cm = get_node_or_null("/root/CinematicManager")

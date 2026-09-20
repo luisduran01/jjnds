@@ -5,6 +5,7 @@ extends Node
 # Just add .wav/.ogg files to res://audio/ with matching names to use them
 
 const AUDIO_PATH = "res://audio/"
+const MUSIC_PATH = "res://scripts/musica/"
 
 const SOUNDS = {
 	"punch_jab":     "punch_jab.wav",
@@ -23,8 +24,17 @@ const SOUNDS = {
 	"ambience_gym":  "ambience_gym.wav"
 }
 
+const MUSIC = {
+	"menu": "menu.mp3",
+	"heavy": "Heavy_Weight.mp3",
+	"career": "modocarrera.mp3",
+	"select": "seleccionpersonajes.mp3"
+}
+
 var players: Dictionary = {}
 var current_ambience: AudioStreamPlayer = null
+var current_bgm: AudioStreamPlayer = null
+var bgm_queue: String = ""
 func _ready() -> void:
 	for key in SOUNDS:
 		var path = AUDIO_PATH + SOUNDS[key]
@@ -40,6 +50,17 @@ func _ready() -> void:
 			else:
 				ap.bus = "SFX" if AudioServer.get_bus_index("SFX") >= 0 else "Master"
 				
+			add_child(ap)
+			players[key] = ap
+			
+	for key in MUSIC:
+		var path = MUSIC_PATH + MUSIC[key]
+		if ResourceLoader.exists(path):
+			var ap = AudioStreamPlayer.new()
+			ap.stream = load(path)
+			ap.name = key
+			ap.bus = "Music" if AudioServer.get_bus_index("Music") >= 0 else "Master"
+			ap.finished.connect(_on_bgm_finished.bind(key))
 			add_child(ap)
 			players[key] = ap
 
@@ -79,3 +100,33 @@ func stop_ambience(fade_time: float = 1.0) -> void:
 		tw.tween_property(current_ambience, "volume_db", -40.0, fade_time)
 		tw.tween_callback(current_ambience.stop)
 		current_ambience = null
+
+func play_bgm(music_name: String, queue_next: String = "", fade_time: float = 1.0) -> void:
+	if current_bgm and current_bgm.name == music_name and current_bgm.playing:
+		bgm_queue = queue_next
+		return
+		
+	if current_bgm:
+		var tw = create_tween()
+		tw.tween_property(current_bgm, "volume_db", -40.0, fade_time)
+		tw.tween_callback(current_bgm.stop)
+		
+	if players.has(music_name):
+		current_bgm = players[music_name]
+		bgm_queue = queue_next
+		current_bgm.volume_db = -40.0
+		current_bgm.play()
+		var tw2 = create_tween()
+		tw2.tween_property(current_bgm, "volume_db", -10.0, fade_time)
+
+func stop_bgm(fade_time: float = 1.0) -> void:
+	if current_bgm:
+		var tw = create_tween()
+		tw.tween_property(current_bgm, "volume_db", -40.0, fade_time)
+		tw.tween_callback(current_bgm.stop)
+		current_bgm = null
+		bgm_queue = ""
+
+func _on_bgm_finished(music_name: String) -> void:
+	if current_bgm and current_bgm.name == music_name and bgm_queue != "":
+		play_bgm(bgm_queue)

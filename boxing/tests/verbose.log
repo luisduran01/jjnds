@@ -1,0 +1,44 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+TextServer: Added interface "Dummy"
+TextServer: Added interface "ICU / HarfBuzz / Graphite (Built-in)"
+Using "default" pen tablet driver...
+
+TextServer: Primary interface set to: "ICU / HarfBuzz / Graphite (Built-in)".
+CORE API HASH: 2004498165
+EDITOR API HASH: 1696660745
+Loading resource: res://boxing/tests/combat_test.gd remapped: res://boxing/tests/combat_test.gd
+Completed load for: 'res://boxing/tests/combat_test.gd' remapped 'res://boxing/tests/combat_test.gd' at thread -1
+SceneTreeFTI: traversal method DEFAULT
+Loading resource: res://addons/godot_ai/runtime/game_helper.gd remapped: res://addons/godot_ai/runtime/game_helper.gd
+Completed load for: 'res://addons/godot_ai/runtime/game_helper.gd' remapped 'res://addons/godot_ai/runtime/game_helper.gd' at thread -1
+Loading resource: res://scripts/managers/game_manager.gd remapped: res://scripts/managers/game_manager.gd
+Completed load for: 'res://scripts/managers/game_manager.gd' remapped 'res://scripts/managers/game_manager.gd' at thread -1
+Loading resource: res://scripts/managers/sound_manager.gd remapped: res://scripts/managers/sound_manager.gd
+Completed load for: 'res://scripts/managers/sound_manager.gd' remapped 'res://scripts/managers/sound_manager.gd' at thread -1
+Loading resource: res://scripts/managers/transition_manager.gd remapped: res://scripts/managers/transition_manager.gd
+Completed load for: 'res://scripts/managers/transition_manager.gd' remapped 'res://scripts/managers/transition_manager.gd' at thread -1
+Loading resource: res://scripts/managers/cinematic_manager.gd remapped: res://scripts/managers/cinematic_manager.gd
+Completed load for: 'res://scripts/managers/cinematic_manager.gd' remapped 'res://scripts/managers/cinematic_manager.gd' at thread -1
+Loaded system CA certificates
+[godot_ai game_helper] registered mcp capture (debugger active=false, logger=true)
+Loading resource: res://boxing/managers/input_setup.gd remapped: res://boxing/managers/input_setup.gd
+Completed load for: 'res://boxing/managers/input_setup.gd' remapped 'res://boxing/managers/input_setup.gd' at thread -1
+Loading resource: res://boxing/characters/fighter.gd remapped: res://boxing/characters/fighter.gd
+Completed load for: 'res://boxing/characters/fighter.gd' remapped 'res://boxing/characters/fighter.gd' at thread -1
+Loading resource: res://boxing/characters/boxer_rigged.glb remapped: res://boxing/characters/boxer_rigged.glb
+Loading resource: res://.godot/imported/boxer_rigged.glb-63763b7649f72791e539fb585a11caff.scn remapped: res://.godot/imported/boxer_rigged.glb-63763b7649f72791e539fb585a11caff.scn
+Completed load for: 'res://boxing/characters/boxer_rigged.glb' remapped 'res://boxing/characters/boxer_rigged.glb' at thread -1
+Loading resource: res://boxing/characters/boxer_rigged.glb remapped: res://boxing/characters/boxer_rigged.glb
+Loading resource: res://.godot/imported/boxer_rigged.glb-63763b7649f72791e539fb585a11caff.scn remapped: res://.godot/imported/boxer_rigged.glb-63763b7649f72791e539fb585a11caff.scn
+Completed load for: 'res://boxing/characters/boxer_rigged.glb' remapped 'res://boxing/characters/boxer_rigged.glb' at thread -1
+Loading resource: res://boxing/main.tscn remapped: res://boxing/main.tscn
+Loading resource: res://boxing/main.gd remapped: res://boxing/main.gd
+Completed load for: 'res://boxing/main.gd' remapped 'res://boxing/main.gd' at thread -1
+Completed load for: 'res://boxing/main.tscn' remapped 'res://boxing/main.tscn' at thread -1
+Loading resource: res://boxing/characters/boxer_rigged.glb remapped: res://boxing/characters/boxer_rigged.glb
+Loading resource: res://.godot/imported/boxer_rigged.glb-63763b7649f72791e539fb585a11caff.scn remapped: res://.godot/imported/boxer_rigged.glb-63763b7649f72791e539fb585a11caff.scn
+Completed load for: 'res://boxing/characters/boxer_rigged.glb' remapped 'res://boxing/characters/boxer_rigged.glb' at thread -1
+Loading resource: res://boxing/characters/boxer_rigged.glb remapped: res://boxing/characters/boxer_rigged.glb
+Loading resource: res://.godot/imported/boxer_rigged.glb-63763b7649f72791e539fb585a11caff.scn remapped: res://.godot/imported/boxer_rigged.glb-63763b7649f72791e539fb585a11caff.scn
+Completed load for: 'res://boxing/characters/boxer_rigged.glb' remapped 'res://boxing/characters/boxer_rigged.glb' at thread -1
+COMBAT + FLOW TEST FAILURES: 0

@@ -1,0 +1,84 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+[   0% ] first_scan_filesystem | Started Project initialization (5 steps)
+[   0% ] first_scan_filesystem | Scanning file structure...
+[  16% ] first_scan_filesystem | Loading global class names...
+[  33% ] first_scan_filesystem | Verifying GDExtensions...
+[  50% ] first_scan_filesystem | Creating autoload scripts...
+[  66% ] first_scan_filesystem | Initializing plugins...
+MCP | plugin disabled in headless mode
+[  83% ] first_scan_filesystem | Starting file scan...
+[ DONE ] first_scan_filesystem
+
+[   0% ] update_scripts_classes | Started Registering global classes... (8 steps)
+[   0% ] update_scripts_classes | 
+[  11% ] update_scripts_classes | 
+[  22% ] update_scripts_classes | 
+[  33% ] update_scripts_classes | 
+[  44% ] update_scripts_classes | 
+[  55% ] update_scripts_classes | 
+[  66% ] update_scripts_classes | 
+[  77% ] update_scripts_classes | 
+[ DONE ] update_scripts_classes
+
+[   0% ] loading_editor_layout | Started Loading editor (5 steps)
+[   0% ] loading_editor_layout | Loading editor layout...
+[  16% ] loading_editor_layout | Loading docks...
+[  33% ] loading_editor_layout | Reopening scenes...
+[  50% ] loading_editor_layout | Loading central editor layout...
+[  66% ] loading_editor_layout | Loading plugin window layout...
+ERROR: Could not create child process: ""C:\Users\Luis Duran\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe"" "C:/Users/Luis Duran/Desktop/jjnds" --goto "C:/Users/Luis Duran/Desktop/jjnds/scripts/arena/camera_rig.gd:1:1"
+   at: create_process (platform/windows/os_windows.cpp:1589)
+ERROR: Couldn't open external text editor, falling back to the internal editor. Review your `text_editor/external/` editor settings.
+   at: edit (editor/script/script_editor_plugin.cpp:2232)
+ERROR: Could not create child process: ""C:\Users\Luis Duran\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe"" "C:/Users/Luis Duran/Desktop/jjnds" --goto "C:/Users/Luis Duran/Desktop/jjnds/scripts/career/career_menu.gd:1:1"
+   at: create_process (platform/windows/os_windows.cpp:1589)
+ERROR: Couldn't open external text editor, falling back to the internal editor. Review your `text_editor/external/` editor settings.
+   at: edit (editor/script/script_editor_plugin.cpp:2232)
+ERROR: Could not create child process: ""C:\Users\Luis Duran\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe"" "C:/Users/Luis Duran/Desktop/jjnds" --goto "C:/Users/Luis Duran/Desktop/jjnds/scripts/arena/crowd_section.gd:1:1"
+   at: create_process (platform/windows/os_windows.cpp:1589)
+ERROR: Couldn't open external text editor, falling back to the internal editor. Review your `text_editor/external/` editor settings.
+   at: edit (editor/script/script_editor_plugin.cpp:2232)
+ERROR: Could not create child process: ""C:\Users\Luis Duran\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe"" "C:/Users/Luis Duran/Desktop/jjnds" --goto "C:/Users/Luis Duran/Desktop/jjnds/assets/enemy.gd:1:1"
+   at: create_process (platform/windows/os_windows.cpp:1589)
+ERROR: Couldn't open external text editor, falling back to the internal editor. Review your `text_editor/external/` editor settings.
+   at: edit (editor/script/script_editor_plugin.cpp:2232)
+ERROR: Could not create child process: ""C:\Users\Luis Duran\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe"" "C:/Users/Luis Duran/Desktop/jjnds" --goto "C:/Users/Luis Duran/Desktop/jjnds/scripts/tools/extract_animations.gd:1:1"
+   at: create_process (platform/windows/os_windows.cpp:1589)
+ERROR: Couldn't open external text editor, falling back to the internal editor. Review your `text_editor/external/` editor settings.
+   at: edit (editor/script/script_editor_plugin.cpp:2232)
+ERROR: Could not create child process: ""C:\Users\Luis Duran\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe"" "C:/Users/Luis Duran/Desktop/jjnds" --goto "C:/Users/Luis Duran/Desktop/jjnds/scripts/fighter/fighter_3d.gd:1:1"
+   at: create_process (platform/windows/os_windows.cpp:1589)
+ERROR: Couldn't open external text editor, falling back to the internal editor. Review your `text_editor/external/` editor settings.
+   at: edit (editor/script/script_editor_plugin.cpp:2232)
+ERROR: Could not create child process: ""C:\Users\Luis Duran\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe"" "C:/Users/Luis Duran/Desktop/jjnds" --goto "C:/Users/Luis Duran/Desktop/jjnds/scripts/cinematics/fighter_entrance.gd:1:1"
+   at: create_process (platform/windows/os_windows.cpp:1589)
+ERROR: Couldn't open external text editor, falling back to the internal editor. Review your `text_editor/external/` editor settings.
+   at: edit (editor/script/script_editor_plugin.cpp:2232)
+ERROR: Could not create child process: ""C:\Users\Luis Duran\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe"" "C:/Users/Luis Duran/Desktop/jjnds" --goto "C:/Users/Luis Duran/Desktop/jjnds/addons/godot_ai/runtime/game_helper.gd:1:1"
+   at: create_process (platform/windows/os_windows.cpp:1589)
+ERROR: Couldn't open external text editor, falling back to the internal editor. Review your `text_editor/external/` editor settings.
+   at: edit (editor/script/script_editor_plugin.cpp:2232)
+ERROR: Could not create child process: ""C:\Users\Luis Duran\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe"" "C:/Users/Luis Duran/Desktop/jjnds" --goto "C:/Users/Luis Duran/Desktop/jjnds/assets/main.gd:1:1"
+   at: create_process (platform/windows/os_windows.cpp:1589)
+ERROR: Couldn't open external text editor, falling back to the internal editor. Review your `text_editor/external/` editor settings.
+   at: edit (editor/script/script_editor_plugin.cpp:2232)
+ERROR: Could not create child process: ""C:\Users\Luis Duran\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe"" "C:/Users/Luis Duran/Desktop/jjnds" --goto "C:/Users/Luis Duran/Desktop/jjnds/scripts/menus/main_menu.gd:1:1"
+   at: create_process (platform/windows/os_windows.cpp:1589)
+ERROR: Couldn't open external text editor, falling back to the internal editor. Review your `text_editor/external/` editor settings.
+   at: edit (editor/script/script_editor_plugin.cpp:2232)
+ERROR: Could not create child process: ""C:\Users\Luis Duran\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe"" "C:/Users/Luis Duran/Desktop/jjnds" --goto "C:/Users/Luis Duran/Desktop/jjnds/player.gd:1:1"
+   at: create_process (platform/windows/os_windows.cpp:1589)
+ERROR: Couldn't open external text editor, falling back to the internal editor. Review your `text_editor/external/` editor settings.
+   at: edit (editor/script/script_editor_plugin.cpp:2232)
+ERROR: Could not create child process: ""C:\Users\Luis Duran\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe"" "C:/Users/Luis Duran/Desktop/jjnds" --goto "C:/Users/Luis Duran/Desktop/jjnds/scripts/cinematics/pre_fight_card.gd:1:1"
+   at: create_process (platform/windows/os_windows.cpp:1589)
+ERROR: Couldn't open external text editor, falling back to the internal editor. Review your `text_editor/external/` editor settings.
+   at: edit (editor/script/script_editor_plugin.cpp:2232)
+ERROR: Could not create child process: ""C:\Users\Luis Duran\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe"" "C:/Users/Luis Duran/Desktop/jjnds" --goto "C:/Users/Luis Duran/Desktop/jjnds/scripts/training/training_menu.gd:1:1"
+   at: create_process (platform/windows/os_windows.cpp:1589)
+ERROR: Couldn't open external text editor, falling back to the internal editor. Review your `text_editor/external/` editor settings.
+   at: edit (editor/script/script_editor_plugin.cpp:2232)
+[  83% ] loading_editor_layout | Editor layout ready.
+[ DONE ] loading_editor_layout
+

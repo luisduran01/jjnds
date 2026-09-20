@@ -1,0 +1,591 @@
+[gd_scene format=3 uid="uid://fight3d_diamond_v3"]
+
+[ext_resource type="Script"    path="res://scripts/fighter/fighter_3d.gd"    id="1_fighter"]
+[ext_resource type="Script"    path="res://scripts/arena/camera_rig.gd"      id="2_camrig"]
+[ext_resource type="Script"    path="res://scripts/ui/fight_hud_3d.gd"       id="3_hud"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ring3d.png"         id="4_canvas_tex"]
+[ext_resource type="Texture2D" path="res://assets/sprites/publico3d.png"      id="5_crowd_tex"]
+[ext_resource type="PackedScene" uid="uid://bgn0e3usgnr6p" path="res://scenes/boxer_3d.tscn" id="6_boxer"]
+
+[sub_resource type="Environment" id="Env_main"]
+background_mode = 1
+background_color = Color(0.005, 0.005, 0.01, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.07, 0.07, 0.14, 1)
+ambient_light_energy = 0.5
+tonemap_mode = 2
+tonemap_white = 1.5
+glow_enabled = true
+glow_normalized = true
+glow_intensity = 0.9
+glow_bloom = 0.25
+glow_blend_mode = 1
+fog_enabled = true
+fog_light_color = Color(0.01, 0.01, 0.04, 1)
+fog_density = 0.015
+volumetric_fog_enabled = true
+volumetric_fog_density = 0.006
+volumetric_fog_albedo = Color(0.5, 0.6, 1.0, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_canvas"]
+albedo_texture = ExtResource("4_canvas_tex")
+roughness = 0.85
+
+[sub_resource type="BoxMesh" id="Mesh_canvas"]
+material = SubResource("Mat_canvas")
+size = Vector3(6, 0.22, 6)
+
+[sub_resource type="BoxShape3D" id="Shape_canvas"]
+size = Vector3(6, 0.22, 6)
+
+[sub_resource type="StandardMaterial3D" id="Mat_apron"]
+albedo_color = Color(0.04, 0.04, 0.06, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="Mesh_apron"]
+material = SubResource("Mat_apron")
+size = Vector3(7.2, 0.16, 7.2)
+
+[sub_resource type="StandardMaterial3D" id="Mat_metal"]
+albedo_color = Color(0.72, 0.72, 0.76, 1)
+metallic = 0.88
+roughness = 0.28
+
+[sub_resource type="CylinderMesh" id="Mesh_post"]
+material = SubResource("Mat_metal")
+top_radius = 0.07
+bottom_radius = 0.07
+height = 2.0
+
+[sub_resource type="StandardMaterial3D" id="Mat_pad_blue"]
+albedo_color = Color(0.05, 0.30, 0.85, 1)
+roughness = 0.55
+
+[sub_resource type="CapsuleMesh" id="Mesh_pad_blue"]
+material = SubResource("Mat_pad_blue")
+radius = 0.14
+height = 1.1
+
+[sub_resource type="StandardMaterial3D" id="Mat_pad_pink"]
+albedo_color = Color(0.90, 0.08, 0.35, 1)
+roughness = 0.55
+
+[sub_resource type="CapsuleMesh" id="Mesh_pad_pink"]
+material = SubResource("Mat_pad_pink")
+radius = 0.14
+height = 1.1
+
+[sub_resource type="StandardMaterial3D" id="Mat_pad_white"]
+albedo_color = Color(0.85, 0.85, 0.85, 1)
+roughness = 0.55
+
+[sub_resource type="CapsuleMesh" id="Mesh_pad_white"]
+material = SubResource("Mat_pad_white")
+radius = 0.14
+height = 1.1
+
+[sub_resource type="StandardMaterial3D" id="Mat_rope"]
+albedo_color = Color(0.88, 0.88, 0.88, 1)
+roughness = 0.8
+
+[sub_resource type="CylinderMesh" id="Mesh_rope"]
+material = SubResource("Mat_rope")
+top_radius = 0.018
+bottom_radius = 0.018
+height = 5.8
+
+[sub_resource type="StandardMaterial3D" id="Mat_rope_blue"]
+albedo_color = Color(0.1, 0.4, 0.9, 1)
+roughness = 0.6
+
+[sub_resource type="CylinderMesh" id="Mesh_rope_blue"]
+material = SubResource("Mat_rope_blue")
+top_radius = 0.018
+bottom_radius = 0.018
+height = 5.8
+
+[sub_resource type="StandardMaterial3D" id="Mat_floor"]
+albedo_color = Color(0.03, 0.03, 0.05, 1)
+roughness = 1.0
+
+[sub_resource type="BoxMesh" id="Mesh_floor"]
+material = SubResource("Mat_floor")
+size = Vector3(80, 0.1, 80)
+
+[sub_resource type="BoxShape3D" id="Shape_floor"]
+size = Vector3(80, 0.1, 80)
+
+[sub_resource type="StandardMaterial3D" id="Mat_crowd"]
+albedo_texture = ExtResource("5_crowd_tex")
+billboard_mode = 1
+albedo_color = Color(1, 1, 1, 1)
+transparency = 1
+cull_mode = 2
+
+[sub_resource type="QuadMesh" id="Mesh_crowd"]
+material = SubResource("Mat_crowd")
+size = Vector2(3.5, 2.2)
+
+[sub_resource type="CapsuleShape3D" id="Shape_fighter"]
+radius = 0.35
+height = 1.85
+
+[sub_resource type="CapsuleShape3D" id="Shape_head"]
+radius = 0.22
+height = 0.46
+
+[sub_resource type="BoxShape3D" id="Shape_body"]
+size = Vector3(0.48, 0.62, 0.46)
+
+[sub_resource type="BoxShape3D" id="Shape_hitbox"]
+size = Vector3(0.28, 0.28, 0.28)
+
+[sub_resource type="BoxShape3D" id="Shape_wall"]
+size = Vector3(6.5, 4.0, 0.4)
+
+[sub_resource type="StyleBoxFlat" id="Sty_p_bg"]
+bg_color = Color(0.02, 0.03, 0.08, 0.88)
+border_width_left = 3
+border_width_top = 2
+border_width_right = 3
+border_width_bottom = 2
+border_color = Color(0.1, 0.5, 1.0, 1)
+corner_radius_top_left = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0.4, 1, 0.4)
+shadow_size = 6
+
+[sub_resource type="StyleBoxFlat" id="Sty_e_bg"]
+bg_color = Color(0.08, 0.02, 0.04, 0.88)
+border_width_left = 3
+border_width_top = 2
+border_width_right = 3
+border_width_bottom = 2
+border_color = Color(1.0, 0.1, 0.4, 1)
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+shadow_color = Color(1, 0.1, 0.4, 0.4)
+shadow_size = 6
+
+[sub_resource type="StyleBoxFlat" id="Sty_hp_p"]
+bg_color = Color(0.1, 0.9, 0.25, 1)
+
+[sub_resource type="StyleBoxFlat" id="Sty_hp_e"]
+bg_color = Color(0.1, 0.9, 0.25, 1)
+
+[sub_resource type="StyleBoxFlat" id="Sty_st_p"]
+bg_color = Color(0.15, 0.65, 1.0, 1)
+
+[sub_resource type="StyleBoxFlat" id="Sty_st_e"]
+bg_color = Color(0.15, 0.65, 1.0, 1)
+
+[sub_resource type="StyleBoxFlat" id="Sty_center"]
+bg_color = Color(0.02, 0.02, 0.06, 0.82)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.5, 0.5, 0.8, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_left = 10
+corner_radius_bottom_right = 10
+
+[node name="Fight3D" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_main")
+
+[node name="Lighting" type="Node3D" parent="."]
+
+[node name="MainSpot" type="SpotLight3D" parent="Lighting"]
+transform = Transform3D(1,0,0, 0,-0.00000004,1, 0,-1,-0.00000004, 0,12,0)
+light_color = Color(1, 0.98, 0.95, 1)
+light_energy = 9.0
+shadow_enabled = true
+spot_range = 22.0
+spot_angle = 38.0
+
+[node name="SpotL2" type="SpotLight3D" parent="Lighting"]
+transform = Transform3D(1,0,0, 0,-0.00000004,1, 0,-1,-0.00000004, -1.5,11,1.5)
+light_color = Color(1, 0.95, 0.9, 1)
+light_energy = 4.0
+shadow_enabled = false
+spot_range = 18.0
+spot_angle = 42.0
+
+[node name="SpotL3" type="SpotLight3D" parent="Lighting"]
+transform = Transform3D(1,0,0, 0,-0.00000004,1, 0,-1,-0.00000004, 1.5,11,-1.5)
+light_color = Color(1, 0.95, 0.9, 1)
+light_energy = 4.0
+shadow_enabled = false
+spot_range = 18.0
+spot_angle = 42.0
+
+[node name="BlueAccent" type="SpotLight3D" parent="Lighting"]
+transform = Transform3D(0.707,-0.5,-0.5, 0,0.707,-0.707, 0.707,0.5,0.5, -7,7,-7)
+light_color = Color(0.1, 0.45, 1.0, 1)
+light_energy = 12.0
+shadow_enabled = true
+spot_range = 18.0
+spot_angle = 50.0
+
+[node name="PinkAccent" type="SpotLight3D" parent="Lighting"]
+transform = Transform3D(-0.707,-0.5,0.5, 0,0.707,0.707, -0.707,0.5,-0.5, 7,7,7)
+light_color = Color(1.0, 0.1, 0.45, 1)
+light_energy = 12.0
+shadow_enabled = true
+spot_range = 18.0
+spot_angle = 50.0
+
+[node name="AmbientFill" type="DirectionalLight3D" parent="Lighting"]
+transform = Transform3D(1,0,0, 0,0.7,-0.7, 0,0.7,0.7, 0,8,-5)
+light_color = Color(0.15, 0.18, 0.3, 1)
+light_energy = 0.35
+shadow_enabled = false
+
+[node name="Arena" type="Node3D" parent="."]
+
+[node name="Floor" type="StaticBody3D" parent="Arena"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, 0,-0.05,0)
+[node name="Mesh" type="MeshInstance3D" parent="Arena/Floor"]
+mesh = SubResource("Mesh_floor")
+[node name="Col"  type="CollisionShape3D" parent="Arena/Floor"]
+shape = SubResource("Shape_floor")
+
+[node name="Ring" type="Node3D" parent="Arena"]
+
+[node name="Apron" type="MeshInstance3D" parent="Arena/Ring"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, 0,-0.04,0)
+mesh = SubResource("Mesh_apron")
+
+[node name="Canvas" type="StaticBody3D" parent="Arena/Ring"]
+[node name="Mesh" type="MeshInstance3D" parent="Arena/Ring/Canvas"]
+mesh = SubResource("Mesh_canvas")
+[node name="Col"  type="CollisionShape3D" parent="Arena/Ring/Canvas"]
+shape = SubResource("Shape_canvas")
+
+[node name="Posts" type="Node3D" parent="Arena/Ring"]
+
+[node name="PostBL" type="MeshInstance3D" parent="Arena/Ring/Posts"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, -2.9,1.0,-2.9)
+mesh = SubResource("Mesh_post")
+[node name="PadBL" type="MeshInstance3D" parent="Arena/Ring/Posts/PostBL"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, 0.12,0,0.12)
+mesh = SubResource("Mesh_pad_blue")
+
+[node name="PostTR" type="MeshInstance3D" parent="Arena/Ring/Posts"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, 2.9,1.0,2.9)
+mesh = SubResource("Mesh_post")
+[node name="PadTR" type="MeshInstance3D" parent="Arena/Ring/Posts/PostTR"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, -0.12,0,-0.12)
+mesh = SubResource("Mesh_pad_pink")
+
+[node name="PostBR" type="MeshInstance3D" parent="Arena/Ring/Posts"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, 2.9,1.0,-2.9)
+mesh = SubResource("Mesh_post")
+[node name="PadBR" type="MeshInstance3D" parent="Arena/Ring/Posts/PostBR"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, -0.12,0,0.12)
+mesh = SubResource("Mesh_pad_white")
+
+[node name="PostTL" type="MeshInstance3D" parent="Arena/Ring/Posts"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, -2.9,1.0,2.9)
+mesh = SubResource("Mesh_post")
+[node name="PadTL" type="MeshInstance3D" parent="Arena/Ring/Posts/PostTL"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, 0.12,0,-0.12)
+mesh = SubResource("Mesh_pad_white")
+
+[node name="Ropes" type="Node3D" parent="Arena/Ring"]
+
+[node name="RopeN_1" type="MeshInstance3D" parent="Arena/Ring/Ropes"]
+transform = Transform3D(0,-1,0, 1,0,0, 0,0,1, 0,1.35,-2.9)
+mesh = SubResource("Mesh_rope_blue")
+[node name="RopeN_2" type="MeshInstance3D" parent="Arena/Ring/Ropes"]
+transform = Transform3D(0,-1,0, 1,0,0, 0,0,1, 0,0.95,-2.9)
+mesh = SubResource("Mesh_rope")
+[node name="RopeN_3" type="MeshInstance3D" parent="Arena/Ring/Ropes"]
+transform = Transform3D(0,-1,0, 1,0,0, 0,0,1, 0,0.55,-2.9)
+mesh = SubResource("Mesh_rope")
+
+[node name="RopeS_1" type="MeshInstance3D" parent="Arena/Ring/Ropes"]
+transform = Transform3D(0,-1,0, 1,0,0, 0,0,1, 0,1.35, 2.9)
+mesh = SubResource("Mesh_rope_blue")
+[node name="RopeS_2" type="MeshInstance3D" parent="Arena/Ring/Ropes"]
+transform = Transform3D(0,-1,0, 1,0,0, 0,0,1, 0,0.95, 2.9)
+mesh = SubResource("Mesh_rope")
+[node name="RopeS_3" type="MeshInstance3D" parent="Arena/Ring/Ropes"]
+transform = Transform3D(0,-1,0, 1,0,0, 0,0,1, 0,0.55, 2.9)
+mesh = SubResource("Mesh_rope")
+
+[node name="RopeE_1" type="MeshInstance3D" parent="Arena/Ring/Ropes"]
+transform = Transform3D(1,0,0, 0,0,-1, 0,1,0, 2.9,1.35,0)
+mesh = SubResource("Mesh_rope_blue")
+[node name="RopeE_2" type="MeshInstance3D" parent="Arena/Ring/Ropes"]
+transform = Transform3D(1,0,0, 0,0,-1, 0,1,0, 2.9,0.95,0)
+mesh = SubResource("Mesh_rope")
+[node name="RopeE_3" type="MeshInstance3D" parent="Arena/Ring/Ropes"]
+transform = Transform3D(1,0,0, 0,0,-1, 0,1,0, 2.9,0.55,0)
+mesh = SubResource("Mesh_rope")
+
+[node name="RopeW_1" type="MeshInstance3D" parent="Arena/Ring/Ropes"]
+transform = Transform3D(1,0,0, 0,0,-1, 0,1,0, -2.9,1.35,0)
+mesh = SubResource("Mesh_rope_blue")
+[node name="RopeW_2" type="MeshInstance3D" parent="Arena/Ring/Ropes"]
+transform = Transform3D(1,0,0, 0,0,-1, 0,1,0, -2.9,0.95,0)
+mesh = SubResource("Mesh_rope")
+[node name="RopeW_3" type="MeshInstance3D" parent="Arena/Ring/Ropes"]
+transform = Transform3D(1,0,0, 0,0,-1, 0,1,0, -2.9,0.55,0)
+mesh = SubResource("Mesh_rope")
+
+[node name="Walls" type="Node3D" parent="Arena/Ring"]
+[node name="WN" type="StaticBody3D" parent="Arena/Ring/Walls"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, 0,2,-3.35)
+[node name="Col" type="CollisionShape3D" parent="Arena/Ring/Walls/WN"]
+shape = SubResource("Shape_wall")
+[node name="WS" type="StaticBody3D" parent="Arena/Ring/Walls"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, 0,2, 3.35)
+[node name="Col" type="CollisionShape3D" parent="Arena/Ring/Walls/WS"]
+shape = SubResource("Shape_wall")
+
+[node name="Crowd" type="Node3D" parent="Arena"]
+
+[node name="CrowdN1" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, -5, 1.2,-9)
+mesh = SubResource("Mesh_crowd")
+[node name="CrowdN2" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1,  0, 1.2,-9)
+mesh = SubResource("Mesh_crowd")
+[node name="CrowdN3" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1,  5, 1.2,-9)
+mesh = SubResource("Mesh_crowd")
+[node name="CrowdN4" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, -5, 3.2,-10)
+mesh = SubResource("Mesh_crowd")
+[node name="CrowdN5" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1,  0, 3.2,-10)
+mesh = SubResource("Mesh_crowd")
+[node name="CrowdN6" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1,  5, 3.2,-10)
+mesh = SubResource("Mesh_crowd")
+
+[node name="CrowdS1" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, -5, 1.2, 9)
+mesh = SubResource("Mesh_crowd")
+[node name="CrowdS2" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1,  0, 1.2, 9)
+mesh = SubResource("Mesh_crowd")
+[node name="CrowdS3" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1,  5, 1.2, 9)
+mesh = SubResource("Mesh_crowd")
+[node name="CrowdS4" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, -5, 3.2,10)
+mesh = SubResource("Mesh_crowd")
+[node name="CrowdS5" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1,  0, 3.2,10)
+mesh = SubResource("Mesh_crowd")
+[node name="CrowdS6" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1,  5, 3.2,10)
+mesh = SubResource("Mesh_crowd")
+
+[node name="CrowdE1" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1,  9, 1.2,-4)
+mesh = SubResource("Mesh_crowd")
+[node name="CrowdE2" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1,  9, 1.2, 0)
+mesh = SubResource("Mesh_crowd")
+[node name="CrowdE3" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1,  9, 1.2, 4)
+mesh = SubResource("Mesh_crowd")
+[node name="CrowdE4" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, 10, 3.2, 0)
+mesh = SubResource("Mesh_crowd")
+
+[node name="CrowdW1" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, -9, 1.2,-4)
+mesh = SubResource("Mesh_crowd")
+[node name="CrowdW2" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, -9, 1.2, 0)
+mesh = SubResource("Mesh_crowd")
+[node name="CrowdW3" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1, -9, 1.2, 4)
+mesh = SubResource("Mesh_crowd")
+[node name="CrowdW4" type="MeshInstance3D" parent="Arena/Crowd"]
+transform = Transform3D(1,0,0,0,1,0,0,0,1,-10, 3.2, 0)
+mesh = SubResource("Mesh_crowd")
+
+[node name="Fighters" type="Node3D" parent="."]
+
+[node name="Player3D" parent="Fighters" groups=["player"] instance=ExtResource("6_boxer")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.4, 0.11, 0)
+collision_layer = 1
+collision_mask = 5
+script = ExtResource("1_fighter")
+is_player = true
+
+[node name="Enemy3D" parent="Fighters" groups=["enemy"] instance=ExtResource("6_boxer")]
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 1.4, 0.11, 0)
+collision_layer = 1
+collision_mask = 5
+script = ExtResource("1_fighter")
+is_player = false
+
+[node name="CameraRig" type="Node3D" parent="." node_paths=PackedStringArray("player","enemy")]
+transform = Transform3D(1,0,0, 0,0.98,0.2, 0,-0.2,0.98, 0,2.5,6.0)
+script = ExtResource("2_camrig")
+player = NodePath("../Fighters/Player3D")
+enemy  = NodePath("../Fighters/Enemy3D")
+min_zoom      = 4.0
+max_zoom      = 8.0
+height_offset = 1.3
+smooth_speed  = 4.5
+[node name="Camera3D" type="Camera3D" parent="CameraRig"]
+current = true
+fov = 62.0
+near = 0.1
+far  = 120.0
+
+[node name="HUD" type="CanvasLayer" parent="."]
+layer = 10
+script = ExtResource("3_hud")
+
+[node name="PlayerSide" type="VBoxContainer" parent="HUD"]
+anchors_preset = 0
+offset_left  = 20
+offset_top   = 20
+offset_right = 420
+offset_bottom = 120
+theme_override_constants/separation = 6
+
+[node name="BG" type="Panel" parent="HUD/PlayerSide"]
+custom_minimum_size = Vector2(380, 48)
+layout_mode = 2
+theme_override_styles/panel = SubResource("Sty_p_bg")
+
+[node name="NameLabel" type="Label" parent="HUD/PlayerSide/BG"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right  = 1.0
+anchor_bottom = 1.0
+offset_left = 18
+grow_horizontal = 2
+grow_vertical   = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 26
+text = "ALONSO"
+vertical_alignment = 1
+
+[node name="HealthBar" type="ProgressBar" parent="HUD/PlayerSide"]
+custom_minimum_size = Vector2(380, 22)
+layout_mode = 2
+theme_override_styles/fill = SubResource("Sty_hp_p")
+value = 100.0
+show_percentage = false
+
+[node name="StaminaBar" type="ProgressBar" parent="HUD/PlayerSide"]
+custom_minimum_size = Vector2(360, 11)
+layout_mode = 2
+theme_override_styles/fill = SubResource("Sty_st_p")
+value = 100.0
+show_percentage = false
+
+[node name="EnemySide" type="VBoxContainer" parent="HUD"]
+anchors_preset = 1
+anchor_left  = 1.0
+anchor_right = 1.0
+offset_left  = -420
+offset_top   = 20
+offset_right = -20
+offset_bottom = 120
+grow_horizontal = 0
+theme_override_constants/separation = 6
+
+[node name="BG" type="Panel" parent="HUD/EnemySide"]
+custom_minimum_size = Vector2(380, 48)
+layout_mode = 2
+theme_override_styles/panel = SubResource("Sty_e_bg")
+
+[node name="NameLabel" type="Label" parent="HUD/EnemySide/BG"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right  = 1.0
+anchor_bottom = 1.0
+offset_right = -18
+grow_horizontal = 2
+grow_vertical   = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 26
+text = "DIEGO CRUZ"
+horizontal_alignment = 2
+vertical_alignment   = 1
+
+[node name="HealthBar" type="ProgressBar" parent="HUD/EnemySide"]
+custom_minimum_size = Vector2(380, 22)
+layout_mode = 2
+theme_override_styles/fill = SubResource("Sty_hp_e")
+value = 100.0
+fill_mode = 1
+show_percentage = false
+
+[node name="StaminaBar" type="ProgressBar" parent="HUD/EnemySide"]
+custom_minimum_size = Vector2(360, 11)
+layout_mode = 2
+theme_override_styles/fill = SubResource("Sty_st_e")
+value = 100.0
+fill_mode = 1
+show_percentage = false
+
+[node name="Center" type="VBoxContainer" parent="HUD"]
+anchors_preset = 8
+anchor_left   = 0.5
+anchor_right  = 0.5
+anchor_top    = 0.0
+anchor_bottom = 0.0
+offset_left   = -100
+offset_top    = 20
+offset_right  = 100
+offset_bottom = 120
+grow_horizontal = 2
+grow_vertical   = 2
+theme_override_constants/separation = 2
+alignment = 1
+
+[node name="BG" type="Panel" parent="HUD/Center"]
+layout_mode = 2
+size_flags_horizontal = 4
+custom_minimum_size = Vector2(200, 90)
+theme_override_styles/panel = SubResource("Sty_center")
+
+[node name="RoundLabel" type="Label" parent="HUD/Center"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 17
+text = "ROUND  1"
+horizontal_alignment = 1
+
+[node name="TimerLabel" type="Label" parent="HUD/Center"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0,0,0,1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 44
+text = "3:00"
+horizontal_alignment = 1
+
+[node name="ComboLabel" type="Label" parent="HUD"]
+anchors_preset = 8
+anchor_left  = 0.5
+anchor_right = 0.5
+anchor_top   = 0.5
+anchor_bottom = 0.5
+offset_left  = -160
+offset_top   = -280
+offset_right = 160
+offset_bottom = -200
+grow_horizontal = 2
+grow_vertical   = 2
+theme_override_colors/font_color = Color(1, 0.85, 0, 1)
+theme_override_colors/font_outline_color = Color(0,0,0,1)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 60
+horizontal_alignment = 1
+vertical_alignment   = 1
