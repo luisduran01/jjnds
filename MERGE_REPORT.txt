@@ -1,0 +1,27 @@
+Boxin SSJJ Combat 2.0 merged recovery
+
+Base: Cuenta 2 (preserved for all conflicts)
+Rescued from Cuenta 1 only when missing from Cuenta 2 and combat-relevant.
+Godot .godot cache and .import/log files from Cuenta 1 were not merged.
+
+Rescued files from Cuenta 1:
+icon.svg
+characters/3d/models/boxing.glb
+characters/3d/animations/walk1_0.png
+characters/3d/animations/dance_0.png
+characters/3d/animations/cross1.glb
+characters/3d/animations/jab1.glb
+characters/3d/animations/dance.glb
+characters/3d/animations/cross1_0.png
+characters/3d/animations/walk3_0.png
+characters/3d/animations/walk1.glb
+characters/3d/animations/walk2.glb
+characters/3d/animations/walk3.glb
+characters/3d/animations/jab1_0.png
+characters/3d/animations/walk2_0.png
+characters/3d/animations/boxer_library.res
+boxing/tests/debug_hook.gd
+boxing/tests/pose_test.gd
+boxing/tests/fight_sim.gd
+boxing/characters/HighPoly_Reference.glb
+boxing/characters/procedural_rig.gd

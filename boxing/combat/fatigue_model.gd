@@ -20,6 +20,11 @@ func spend(cost: float, intensity: float=1.0) -> void:
 	chain_pressure=minf(1.0,chain_pressure+.28*intensity)
 	fatigue=minf(100.0,fatigue+scaled*.42+chain_pressure*4.0)
 
+# Sustained cost (holding a guard, carrying body damage) without the burst
+# fatigue that spend() charges for a single explosive action.
+func drain(amount: float) -> void:
+	energy=maxf(0.0,energy-maxf(0.0,amount))
+
 func tick(delta: float, guarding: bool) -> void:
 	chain_pressure=maxf(0.0,chain_pressure-delta*(.55 if guarding else 1.25))
 	var recovery=(7.0+recovery_stat*.09)*(0.55 if guarding else 1.0)*(1.0-fatigue/260.0)

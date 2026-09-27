@@ -10,6 +10,7 @@ enum State { IDLE, MOVING, ATTACKING, BLOCKING, DODGING, HURT, STUNNED, KNOCKDOW
 const Punches = preload("res://boxing/combat/punches.gd")
 const Animations = preload("res://boxing/characters/animation_factory.gd")
 const BodyProfile = preload("res://boxing/characters/body_profile.gd")
+const ReachProfile = preload("res://boxing/characters/reach_profile.gd")
 const Fatigue = preload("res://boxing/combat/fatigue_model.gd")
 const ActiveRagdoll = preload("res://boxing/characters/active_ragdoll.gd")
 const DamageAccumulator = preload("res://boxing/combat/damage_accumulator.gd")
@@ -24,7 +25,13 @@ const CombatTypes = preload("res://boxing/combat/combat_types.gd")
 var opponent: CharacterBody3D
 var state = State.IDLE
 var health = 100.0
-var stamina = 100.0
+# Single source of truth is the fatigue model; direct writes (tests, cutscenes,
+# round rest) mirror into it instead of being silently overwritten next frame.
+var stamina: float = 100.0:
+	set(value):
+		stamina = maxf(0.0, value)
+		if fatigue != null:
+			fatigue.energy = minf(stamina, fatigue.max_energy)
 var guard = 100.0
 var head_damage = 0.0
 var body_damage = 0.0
@@ -52,6 +59,7 @@ var buffer_life = 0.0
 var hits_received: Dictionary = {}
 var model: Node3D
 var step_cooldown: float = 0.0
+var step_hold: float = 0.0
 var is_stepping: bool = false
 var step_velocity: Vector3 = Vector3.ZERO
 var step_duration: float = 0.2
@@ -65,6 +73,10 @@ var fist_speed = 1.0
 var attack_connected = false
 var debug_shapes: Array[MeshInstance3D] = []
 var body_profile: Dictionary = {}
+var reach: Dictionary = {}
+var effective_reach := 0.0
+var reach_slack := 0.0
+var attack_progress := 0.0
 var fatigue
 var active_ragdoll
 var damage_accumulator
@@ -98,8 +110,12 @@ func _ready() -> void:
 	var visual = packed.instantiate()
 	model.add_child(visual)
 	skeleton = find_skeleton(visual)
-	animation = Animations.build(model,skeleton)
+	# The body profile and the measured rig are resolved BEFORE the animation is
+	# built: the pose solver, the bone scale and the reach diagnostics all read
+	# the same arm geometry, so they can no longer disagree.
 	body_profile=BodyProfile.from_stats(profile_value("height",180.0),profile_value("reach",182.0),profile_value("weight",147.0))
+	reach=ReachProfile.resolve(ReachProfile.measure(skeleton),body_profile.get("arm_scale",1.0),body_profile.get("height_scale",1.0))
+	animation = Animations.build(model,skeleton,reach)
 	apply_body_profile()
 	fatigue=Fatigue.new()
 	fatigue.configure(profile_value("stamina_max",100.0),profile_value("recovery",60.0))
@@ -127,6 +143,9 @@ func _ready() -> void:
 		area.set_meta("zone",zone)
 		add_child(area)
 		hurts.append(area)
+	# Reactions and the procedural punch drive are applied after the mixer, so the
+	# AnimationTree can no longer erase them. The mixer is in MANUAL mode; see
+	# _physics_process.
 	# Each fighter gets an independent dynamic skin material and damage atlas.
 	for mesh in visual.find_children("*","MeshInstance3D",true,false):
 		var skin_material=ShaderMaterial.new()
@@ -142,9 +161,12 @@ func profile_value(field: String, fallback: float) -> float:
 func apply_body_profile() -> void:
 	if not skeleton or body_profile.is_empty(): return
 	model.scale=Vector3.ONE*body_profile.height_scale
+	# Arms use the resolved reach scale (rig naturalisation + reach stat, capped)
+	# so the skinned limb and the IK solver can never disagree about its length.
+	var arm_scale: float = reach.get("bone_scale", body_profile.get("arm_scale",1.0))
 	for bone_name in ["LeftUpperArm","LeftForeArm","RightUpperArm","RightForeArm"]:
 		var bone=skeleton.find_bone(bone_name)
-		if bone>=0: skeleton.set_bone_pose_scale(bone,Vector3(body_profile.arm_scale,1,1))
+		if bone>=0: skeleton.set_bone_pose_scale(bone,Vector3(arm_scale,1,1))
 	for bone_name in ["LeftThigh","LeftShin","RightThigh","RightShin"]:
 		var bone=skeleton.find_bone(bone_name)
 		if bone>=0: skeleton.set_bone_pose_scale(bone,Vector3(1,body_profile.leg_scale,1))
@@ -185,6 +207,18 @@ func make_area(label: String,radius: float,layer: int,mask: int) -> Area3D:
 	debug_shapes.append(mesh)
 	return area
 
+# Every stamina change goes through the fatigue model so draining and recovering
+# can never be silently undone by the next mirror sync.
+func spend_stamina(cost: float, intensity: float = 1.0) -> void:
+	if fatigue == null: return
+	fatigue.spend(cost,intensity)
+	stamina=fatigue.energy
+
+func drain_stamina(amount: float) -> void:
+	if fatigue == null: return
+	fatigue.drain(amount)
+	stamina=fatigue.energy
+
 func set_state(next: State,duration: float=0.0,clip: String="") -> void:
 	if combat_state_machine:
 		combat_state_machine.request(next,duration,StringName(clip))
@@ -217,26 +251,48 @@ func attack(punch: String) -> bool:
 	var cost: float = data[4]*(1.0+minf(combo_count,4)*.08)
 	if stamina<cost: return false
 	attack_stamina = stamina
-	stamina -= cost
-	fatigue.spend(cost,1.0+minf(combo_count,4)*.12)
-	stamina=fatigue.energy
+	spend_stamina(cost,1.0+minf(combo_count,4)*.12)
 	combo_count = combo_count+1 if combo_window>0 else 1
 	combo_window = 1.05
 	attack_scale = fatigue.animation_factor()
 	attack_id += 1
 	attack_time = 0
+	attack_progress = 0.0
 	attack_connected = false
 	current_punch = punch
 	if opponent:
 		last_ik_target=opponent.global_position+Vector3(0,1.18 if punch.begins_with("body") else 1.66,0)
+		# STEP: the footwork link of the chain closes the gap the arm cannot cover,
+		# so the punch reaches through movement instead of stretching the model.
+		plan_punch_step(punch)
 	thrown += 1
 	defense = ""
+	update_punch_ik()
 	set_state(State.ATTACKING,0,punch)
 	return true
 
+func plan_punch_step(punch: String) -> void:
+	if opponent == null or reach.is_empty(): return
+	var flat = opponent.global_position-global_position
+	flat.y = 0.0
+	var gap = flat.length()
+	if gap <= 0.12: return
+	var chain = ReachProfile.chain_for(punch)
+	var height_scale: float = body_profile.get("height_scale",1.0)
+	var arm_budget: float = ReachProfile.extension_for(reach,punch)*height_scale
+	# Only cover the part of the gap the arm still falls short of, plus a short
+	# lunge for correct-distance punches.
+	var deficit: float = maxf(0.0,gap-arm_budget-0.30)
+	var step_distance: float = minf(deficit+0.09,0.34)*float(chain["step"])
+	if step_distance <= 0.015 or stamina <= 6.0: return
+	is_stepping = true
+	step_hold = 0.18
+	step_cooldown = 0.30
+	step_velocity = flat.normalized()*(step_distance/0.18)
+
 func dodge(kind: String) -> void:
 	if not can_act() or stamina<9: return
-	stamina -= 9
+	spend_stamina(9.0)
 	defense = kind
 	set_state(State.DODGING,.5,kind)
 
@@ -246,7 +302,7 @@ func feint(kind: String) -> void:
 	if not Punches.DATA.has(kind): return
 	is_feinting = true
 	feint_timer = Punches.DATA[kind][1] * 0.8  # Hasta justo antes del activo
-	stamina -= 2.5
+	spend_stamina(2.5)
 	set_state(State.ATTACKING, 0, kind)  # Usa la misma anim del golpe
 	current_punch = "feint_" + kind  # Marcado como feint, no conecta
 
@@ -256,6 +312,10 @@ func _on_medical_risk() -> void:
 
 func _physics_process(delta: float) -> void:
 	if not skeleton: return
+	# The mixer is in MANUAL mode, so this is the single place the animation is
+	# evaluated. Everything procedural is applied after it and therefore survives.
+	if not animation.is_empty():
+		animation.tree.advance(delta)
 	fatigue.tick(delta,state==State.BLOCKING)
 	stamina=fatigue.energy
 	active_ragdoll.step(delta,fatigue.drive_factor())
@@ -282,8 +342,16 @@ func _physics_process(delta: float) -> void:
 		attack_time += delta*attack_scale
 		animation.tree.set("parameters/ActionSpeed/scale",attack_scale)
 		var d = Punches.DATA[current_punch]
+		attack_progress = clampf(attack_time/maxf(.001,d[0]),0.0,1.0)
+		var drive_intensity = clampf(attack_scale*(0.55+0.45*fatigue.drive_factor()),0.35,1.2)
+		active_ragdoll.set_punch_drive(current_punch,attack_progress,drive_intensity)
+		update_punch_ik()
 		if attack_time>=d[0]:
 			recovery = .15 if not attack_connected else .02
+			# Miss stamina drain: swinging at air costs more than landing.
+			if not attack_connected:
+				spend_stamina(d[4]*.25,.8)
+			active_ragdoll.clear_drive()
 			set_state(State.IDLE)
 			current_punch=""
 			if buffered!="":
@@ -293,7 +361,12 @@ func _physics_process(delta: float) -> void:
 	elif state in [State.DODGING,State.HURT,State.STUNNED,State.GET_UP] and state_time<=0:
 		defense=""
 		set_state(State.IDLE)
-	if state!=State.ATTACKING: animation.tree.set("parameters/ActionSpeed/scale",1.0)
+	if state!=State.ATTACKING:
+		animation.tree.set("parameters/ActionSpeed/scale",1.0)
+		active_ragdoll.clear_drive()
+	# Blocking stamina: holding the guard burns energy even without absorbing.
+	if state==State.BLOCKING:
+		drain_stamina(delta*3.2)
 	if state not in [State.KNOCKDOWN,State.KO,State.VICTORY,State.DEFEAT]:
 		var speed = lerpf(1.1,2.1,health/100.0)*lerpf(.65,1.0,stamina/100.0)
 		if state==State.ATTACKING: speed*=.48
@@ -307,13 +380,22 @@ func _physics_process(delta: float) -> void:
 		if is_stepping:
 			velocity.x = step_velocity.x
 			velocity.z = step_velocity.z
-			if step_cooldown <= 0.0:
+			# The step MOVES for step_hold and then plants; the longer cooldown is
+			# the pause between steps. Holding the velocity for the whole cooldown
+			# turned footwork into a 1.3 m glide.
+			step_hold = maxf(0.0, step_hold - delta)
+			if step_hold <= 0.0:
 				is_stepping = false
+				# The foot plants where the step lands instead of decaying into a
+				# glide; the pause before the next step is what reads as footwork.
+				velocity.x = 0.0
+				velocity.z = 0.0
 		else:
 			if direction.length() > 0.1 and fighting and state in [State.IDLE, State.MOVING] and step_cooldown <= 0:
 				is_stepping = true
+				step_hold = step_duration
 				step_cooldown = step_duration + 0.15 # Pause between steps
-				step_velocity = direction * (speed * 1.8)
+				step_velocity = direction * (speed * 1.15)
 				velocity.x = step_velocity.x
 				velocity.z = step_velocity.z
 			else:
@@ -340,6 +422,8 @@ func _physics_process(delta: float) -> void:
 	update_hitboxes(delta)
 
 func apply_ragdoll_pose() -> void:
+	# Additive on top of the freshly advanced mixer pose: idempotent per frame, and
+	# it is what makes jab/cross/hook/uppercut/body reactions actually visible.
 	for bone_name in ActiveRagdoll.BONES:
 		var bone=skeleton.find_bone(bone_name)
 		if bone<0: continue
@@ -347,15 +431,35 @@ func apply_ragdoll_pose() -> void:
 		if offset.length_squared()>.000001:
 			skeleton.set_bone_pose_rotation(bone,Quaternion.from_euler(offset)*skeleton.get_bone_pose_rotation(bone))
 
+# Centre-to-centre distance at which this punch can actually arrive: the arm's
+# resolved extension plus the glove tip plus the victim's hurtbox. The AI reads
+# this so it never plants a style range it cannot cover with its own arm.
+func punch_envelope(punch: String) -> float:
+	if reach.is_empty(): return 0.90
+	var height_scale: float = body_profile.get("height_scale",1.0)
+	var hurt: float = 0.245 if punch.begins_with("body") else 0.19
+	return ReachProfile.extension_for(reach,punch)*height_scale+ReachProfile.GLOVE_RADIUS+hurt
+
+# Longest reliable range this fighter owns, with a small margin so the AI stands
+# inside its own punches instead of reaching.
+func working_range() -> float:
+	return maxf(0.55,punch_envelope("cross")-0.06)
+
 func update_punch_ik() -> void:
-	if not opponent or current_punch=="": return
+	if not opponent or current_punch=="" or not Punches.DATA.has(current_punch) or reach.is_empty(): return
 	var zone="body" if current_punch.begins_with("body") else "head"
-	var target=opponent.global_position+Vector3(0,1.18 if zone=="body" else 1.66,0)
 	var side=Punches.DATA[current_punch][5]
 	var shoulder_name="LeftUpperArm" if side==0 else "RightUpperArm"
 	var shoulder=skeleton.global_transform*(skeleton.get_bone_global_pose(skeleton.find_bone(shoulder_name)).origin)
-	var solution=ArmIK.solve(shoulder,.25,.23,target)
-	last_ik_target=solution.target
+	# Reach the punch is actually allowed to spend, in metres.
+	var height_scale: float = body_profile.get("height_scale",1.0)
+	effective_reach=ReachProfile.extension_for(reach,current_punch)*height_scale
+	var target=opponent.global_position+Vector3(0,1.18 if zone=="body" else 1.66,0)
+	var delta_to_target=target-shoulder
+	# Negative slack means this punch genuinely cannot arrive: the AI and the
+	# diagnostics read this instead of guessing.
+	reach_slack=delta_to_target.length()-(effective_reach+ReachProfile.GLOVE_RADIUS+.19)
+	last_ik_target=shoulder+delta_to_target.limit_length(effective_reach)
 
 func read_input() -> void:
 	move_input=Input.get_vector("box_left","box_right","box_forward","box_back")
@@ -379,6 +483,7 @@ func update_hitboxes(delta: float) -> void:
 	skeleton.force_update_all_bone_transforms()
 	var head = skeleton.find_bone("Head")
 	var chest = skeleton.find_bone("Chest")
+	# Hurtboxes follow the reacted pose, which now survives the AnimationTree.
 	hurts[0].global_position = skeleton.global_transform*(skeleton.get_bone_global_pose(head).origin+Vector3(0,.07,.015))
 	hurts[1].global_position = skeleton.global_transform*(skeleton.get_bone_global_pose(chest).origin+Vector3(0,-.10,0))
 	for hand in 2:
@@ -387,7 +492,7 @@ func update_hitboxes(delta: float) -> void:
 		point+=global_basis.x*sin(float(attack_id)*9.17+attack_time*31.0)*aim_error
 		fists[hand].global_position=point
 		var effective=false
-		if fighting and state==State.ATTACKING:
+		if fighting and state==State.ATTACKING and Punches.DATA.has(current_punch):
 			var d=Punches.DATA[current_punch]
 			effective=hand==d[5] and attack_time>=d[1] and attack_time<=d[2] and not attack_connected
 		if effective:
@@ -395,6 +500,12 @@ func update_hitboxes(delta: float) -> void:
 			fist_speed=clampf(distance/maxf(delta,.001)/3.0,.65,1.25)
 			# Sweep actual fist volume between sampled poses. No distance-only hit test.
 			var samples=clampi(ceili(distance/.055),1,12)
+			# Deterministic zone resolution: one sweep can graze both hurtboxes, and
+			# the physics engine's report order is not a design decision. The zone the
+			# punch is aimed at always wins; the other zone is only a fallback.
+			var intended: String = "body" if current_punch.begins_with("body") else "head"
+			var primary: Dictionary = {}
+			var fallback: Dictionary = {}
 			for step in range(samples+1):
 				var query=PhysicsShapeQueryParameters3D.new()
 				query.shape=fists[hand].get_child(0).shape
@@ -404,15 +515,19 @@ func update_hitboxes(delta: float) -> void:
 				query.collide_with_bodies=false
 				for result in get_world_3d().direct_space_state.intersect_shape(query,8):
 					var area=result.collider
-					if area.has_meta("fighter") and area.get_meta("fighter")!=self:
-						var victim=area.get_meta("fighter")
-						var accuracy=clampf(1.0-point.distance_to(area.global_position),.6,1.0)
-						var contact_position=old_fists[hand].lerp(point,float(step)/samples)
-						var contact={"position":contact_position,"velocity":(point-old_fists[hand])/maxf(delta,.001),"hand":hand}
-						if victim.receive_hit(self,current_punch,area.get_meta("zone"),fist_speed,accuracy,attack_id,contact):
-							attack_connected=true
-							break
-				if attack_connected: break
+					if not area.has_meta("fighter") or area.get_meta("fighter")==self: continue
+					var zone: String = area.get_meta("zone")
+					var contact_position=old_fists[hand].lerp(point,float(step)/samples)
+					var candidate={"victim":area.get_meta("fighter"),"zone":zone,"area":area,"position":contact_position,"depth":contact_position.distance_to(area.global_position)}
+					if zone==intended:
+						if primary.is_empty() or candidate.depth<primary.depth: primary=candidate
+					elif fallback.is_empty() or candidate.depth<fallback.depth: fallback=candidate
+			var chosen: Dictionary = primary if not primary.is_empty() else fallback
+			if not chosen.is_empty():
+				var accuracy=clampf(1.0-point.distance_to(chosen.area.global_position),.6,1.0)
+				var contact={"position":chosen.position,"velocity":(point-old_fists[hand])/maxf(delta,.001),"hand":hand}
+				if chosen.victim.receive_hit(self,current_punch,chosen.zone,fist_speed,accuracy,attack_id,contact):
+					attack_connected=true
 		old_fists[hand]=point
 
 func receive_hit(attacker: Node,punch: String,zone: String,speed: float,accuracy: float,id: int,contact: Dictionary={}) -> bool:
@@ -435,10 +550,11 @@ func receive_hit(attacker: Node,punch: String,zone: String,speed: float,accuracy
 	if zone=="head": head_damage+=amount
 	else:
 		body_damage+=amount
-		stamina=maxf(0,stamina-amount*1.1)
+		# Body work drains the tank: this is what makes going downstairs pay off.
+		spend_stamina(amount*1.1,.6)
 	if blocked:
 		guard=maxf(0,guard-base*1.5)
-		stamina=maxf(0,stamina-base*.35)
+		spend_stamina(base*.35,.5)
 	else:
 		stun+=amount*(1.45 if counter else 1.0)
 		knockdown_meter+=amount*(1.0+head_damage/140.0)
@@ -455,14 +571,16 @@ func receive_hit(attacker: Node,punch: String,zone: String,speed: float,accuracy
 	var glove_velocity: Vector3=contact.get("velocity",(global_position-attacker.global_position).normalized()*speed*3.0)
 	var guard_absorption=.70 if blocked else 0.0
 	var attacker_mass=80.0*float(attacker.body_profile.get("muscle_mass",1.0))
-	active_ragdoll.apply_contact(zone,contact_position,glove_velocity,attacker_mass,guard_absorption,fatigue.drive_factor())
+	# Per-punch reaction profile: a jab nudges, a cross rings the bell, a hook
+	# rotates, an uppercut snaps upward, a body hook folds the torso.
+	active_ragdoll.apply_contact(zone,contact_position,glove_velocity,attacker_mass,guard_absorption,fatigue.drive_factor(),punch,accuracy)
 	local=to_local(contact_position)
 	var uv=Vector2(clampf(.5+local.x*.65,.08,.92),clampf(.28-local.y*.20+(0.30 if zone=="body" else 0.0),.08,.92))
 	var region=("head_left" if local.x<-.08 else "head_right" if local.x>.08 else "head_center") if zone=="head" else ("body_left" if local.x<0 else "body_right")
 	damage_accumulator.stamp(region,uv,amount/18.0,.055+amount*.002,.35 if not blocked else .05)
 	attacker.landed+=1
 	attacker.round_quality+=amount*(.4 if blocked else 1.0)
-	var info={"damage":amount,"blocked":blocked,"counter":counter,"zone":zone,"punch":punch}
+	var info={"damage":amount,"blocked":blocked,"counter":counter,"zone":zone,"punch":punch,"accuracy":accuracy}
 	attacker.hit_landed.emit(attacker,self,info)
 	if health<=0 or knockdown_meter>42 or (stamina<3 and body_damage>65):
 		knockdowns+=1

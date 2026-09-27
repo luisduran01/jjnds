@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://bqf2e2efight01"]
+
+[ext_resource type="Script" path="res://boxing/tests/fight_e2e.gd" id="1"]
+
+[node name="FightE2E" type="Node3D"]
+script = ExtResource("1")
