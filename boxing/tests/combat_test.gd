@@ -1,4 +1,5 @@
 extends SceneTree
+const CombatTypes = preload("res://boxing/combat/combat_types.gd")
 var failures=0
 
 func _initialize() -> void:
@@ -11,6 +12,8 @@ func check(value: bool,message: String) -> void:
 
 func run() -> void:
 	load("res://boxing/managers/input_setup.gd").install()
+	test_body_profile_and_fatigue()
+	test_dynamic_impact_systems()
 	if not ResourceLoader.exists("res://boxing/characters/fighter.gd"):
 		push_error("TEST FAILED: fighter with physical hit detection is missing")
 		quit(1)
@@ -47,6 +50,8 @@ func run() -> void:
 	var hp = b.health
 	var second = b.receive_hit(a,"jab","head",1.0,1.0,42)
 	check(first and not second and is_equal_approx(hp,b.health),"one impact per attack")
+	check(b.damage_accumulator.region_damage("head_center") > 0.0,"fighter hit updates runtime visual damage")
+	check(b.active_ragdoll.offset_for("Head").length() > 0.0,"fighter hit drives active ragdoll")
 	a.position=Vector3(0,0,0)
 	b.position=Vector3(0,0,.75)
 	for i in 45: await physics_frame
@@ -56,6 +61,7 @@ func run() -> void:
 	for i in 40:
 		await physics_frame
 	check(b.health<before,"animated physical jab should connect at fighting range")
+	check(a.last_ik_target.length_squared()>0.0,"active punch solves an opponent IK target")
 	for punch in load("res://boxing/combat/punches.gd").DATA:
 		a.position=Vector3(0,0,0)
 		b.position=Vector3(0,0,.65)
@@ -95,6 +101,54 @@ func run() -> void:
 	await test_flow()
 	print("COMBAT + FLOW TEST FAILURES: ",failures)
 	quit(1 if failures>0 else 0)
+
+func test_body_profile_and_fatigue() -> void:
+	var profile_script = load("res://boxing/characters/body_profile.gd")
+	check(profile_script != null,"body profile generator exists")
+	if profile_script:
+		var compact = profile_script.from_stats(170.0,170.0,140.0)
+		var tall = profile_script.from_stats(195.0,205.0,220.0)
+		check(tall.height_scale > compact.height_scale,"height changes physical scale")
+		check(tall.arm_scale > compact.arm_scale,"reach changes arm scale")
+		check(tall.torso_width > compact.torso_width,"weight changes torso width")
+		check(tall.arm_scale <= 1.18 and compact.arm_scale >= .88,"body limits remain safe")
+	var fatigue_script = load("res://boxing/combat/fatigue_model.gd")
+	check(fatigue_script != null,"tactical fatigue model exists")
+	if fatigue_script:
+		var fatigue = fatigue_script.new()
+		fatigue.configure(100.0,75.0)
+		fatigue.spend(12.0,1.0)
+		var first = fatigue.fatigue
+		fatigue.spend(12.0,1.0)
+		check(fatigue.fatigue > first,"rapid actions accumulate fatigue")
+		check(fatigue.animation_factor() < 1.0 and fatigue.drive_factor() < 1.0,"fatigue affects animation and physical drive")
+		check(fatigue.accuracy_factor() < 1.0 and fatigue.reaction_delay() > 0.0,"fatigue affects accuracy and reaction delay")
+		fatigue.tick(2.0,false)
+		check(fatigue.energy > 70.0,"rest restores tactical energy")
+
+func test_dynamic_impact_systems() -> void:
+	var damage_script=load("res://boxing/combat/damage_accumulator.gd")
+	check(damage_script != null,"runtime damage accumulator exists")
+	if damage_script:
+		var damage=damage_script.new()
+		damage.stamp("head_left",Vector2(.25,.28),.8,.15,.55)
+		var first=damage.region_damage("head_left")
+		damage.stamp("head_left",Vector2(.25,.28),.8,.15,.55)
+		check(damage.region_damage("head_left") > first,"repeated impacts accumulate visual damage")
+		check(is_zero_approx(damage.region_damage("body_right")),"damage regions stay independent")
+	var ragdoll_script=load("res://boxing/characters/active_ragdoll.gd")
+	check(ragdoll_script != null,"active ragdoll PD controller exists")
+	if ragdoll_script:
+		var ragdoll=ragdoll_script.new()
+		ragdoll.apply_contact("head",Vector3(0,1.7,0),Vector3.RIGHT*10.0,80.0,.0,1.0)
+		var side=ragdoll.offset_for("Head")
+		ragdoll.reset()
+		ragdoll.apply_contact("head",Vector3(0,1.7,0),Vector3.FORWARD*10.0,80.0,.0,1.0)
+		var front=ragdoll.offset_for("Head")
+		ragdoll.reset()
+		ragdoll.apply_contact("head",Vector3(0,1.7,0),Vector3.RIGHT*10.0,80.0,.70,1.0)
+		check(side.angle_to(front) > .2,"impact direction changes bone torque")
+		check(ragdoll.offset_for("Head").length() < side.length(),"guard absorbs active-ragdoll impulse")
 
 func test_flow() -> void:
 	var scene=load("res://boxing/main.tscn").instantiate()

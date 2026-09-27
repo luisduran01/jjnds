@@ -1,6 +1,6 @@
 extends Node
 
-enum Strategy { IDLE, APPROACH, OUTSIDE, MID_RANGE, INSIDE, ATTACK, COMBO, DEFEND, BLOCK, DODGE, COUNTER, RETREAT, HURT, STUNNED, KNOCKDOWN, KO }
+enum Strategy { IDLE, APPROACH, OUTSIDE, MID_RANGE, INSIDE, ATTACK, COMBO, DEFEND, BLOCK, DODGE, COUNTER, RETREAT, HURT, STUNNED, KNOCKDOWN, KO, CUT_RING, CLINCH_BREAK }
 const STYLES = {
 	"Out Boxer": {"range":1.12,"pressure":.36,"counter":.45,"combo":2,"power":.15,"circle":.85},
 	"Pressure Fighter": {"range":.77,"pressure":.82,"counter":.2,"combo":3,"power":.40,"circle":.35},
@@ -29,7 +29,7 @@ func _physics_process(delta: float) -> void:
 	think_time-=delta
 	cooldown-=delta
 	if think_time>0: return
-	think_time=rng.randf_range(.13,.24)
+	think_time=rng.randf_range(.13,.24)+fighter.fatigue.reaction_delay()
 	decide()
 
 func decide() -> void:
@@ -55,10 +55,21 @@ func decide() -> void:
 		strategy=Strategy.RETREAT
 		chain.clear()
 	elif distance>desired+.16:
-		f.move_input.y=-p.pressure
-		strategy=Strategy.APPROACH
-		# Intercept lateral escape rather than only chasing the current position.
-		f.move_input.x+=clampf(target.velocity.dot(f.global_basis.x)*.2,-.3,.3)
+		# Cortar el ring: moverse en ángulo para acorralar en lugar de perseguir directo
+		var to_target = (target.global_position - f.global_position).normalized()
+		var lateral = Vector3(-to_target.z, 0, to_target.x)
+		var corner_pos = target.global_position
+		# Si el rival está huyendo y cerca de una esquina, cortar lateralmente
+		var target_near_wall = absf(target.position.x) > 2.0 or absf(target.position.z) > 2.0
+		if target_near_wall and rng.randf() < p.get("circle", 0.5):
+			# Moverse en diagonal para cortar el ring
+			var cut_dir = f.global_basis.inverse() * (to_target + lateral * 0.6).normalized()
+			f.move_input = Vector2(cut_dir.x, -cut_dir.z) * p.pressure
+			strategy = Strategy.CUT_RING
+		else:
+			f.move_input.y=-p.pressure
+			f.move_input.x+=clampf(target.velocity.dot(f.global_basis.x)*.2,-.3,.3)
+			strategy=Strategy.APPROACH
 	elif distance<desired-.16:
 		f.move_input.y=.65
 		strategy=Strategy.OUTSIDE
@@ -94,7 +105,16 @@ func decide() -> void:
 		if distance<.78: chain=["body_hook","right_uppercut"]
 		if p.combo>=3: chain.append("left_hook")
 		if p.combo>=4: chain.append("body_cross")
+		# Insertar amago ocasionalmente para decepcionar al rival
+		if rng.randf() < 0.15 and chain.size() > 0:
+			chain.insert(0, "feint_jab")
 	var next: String=chain.pop_front()
+	if next.begins_with("feint_"):
+		var base = next.substr(6)
+		f.feint(base)
+		strategy = Strategy.ATTACK
+		cooldown = rng.randf_range(0.3, 0.5)
+		return
 	if f.attack(next):
 		strategy=Strategy.COMBO if not chain.is_empty() else Strategy.ATTACK
 		cooldown=.47 if not chain.is_empty() else rng.randf_range(.65,1.3)

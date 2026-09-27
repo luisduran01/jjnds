@@ -1,15 +1,26 @@
 extends CharacterBody3D
+class_name Fighter
 
 signal hit_landed(attacker, victim, info)
 signal knocked_down(fighter)
 signal state_changed(next)
+signal medical_risk(fighter)
 
 enum State { IDLE, MOVING, ATTACKING, BLOCKING, DODGING, HURT, STUNNED, KNOCKDOWN, GET_UP, KO, VICTORY, DEFEAT }
 const Punches = preload("res://boxing/combat/punches.gd")
 const Animations = preload("res://boxing/characters/animation_factory.gd")
+const BodyProfile = preload("res://boxing/characters/body_profile.gd")
+const Fatigue = preload("res://boxing/combat/fatigue_model.gd")
+const ActiveRagdoll = preload("res://boxing/characters/active_ragdoll.gd")
+const DamageAccumulator = preload("res://boxing/combat/damage_accumulator.gd")
+const ArmIK = preload("res://boxing/characters/arm_ik.gd")
+const InjurySystem = preload("res://boxing/combat/injury_system.gd")
+const CombatState = preload("res://boxing/combat/combat_state_machine.gd")
+const CombatTypes = preload("res://boxing/combat/combat_types.gd")
 @export var is_player = false
 @export var boxer_name = "ALONSO"
 @export var team_color = Color("d94938")
+@export var boxer_data: Resource
 var opponent: CharacterBody3D
 var state = State.IDLE
 var health = 100.0
@@ -40,6 +51,10 @@ var buffered = ""
 var buffer_life = 0.0
 var hits_received: Dictionary = {}
 var model: Node3D
+var step_cooldown: float = 0.0
+var is_stepping: bool = false
+var step_velocity: Vector3 = Vector3.ZERO
+var step_duration: float = 0.2
 var skeleton: Skeleton3D
 var animation: Dictionary
 var fist_points: Array[Node3D] = []
@@ -49,8 +64,21 @@ var old_fists: Array[Vector3] = []
 var fist_speed = 1.0
 var attack_connected = false
 var debug_shapes: Array[MeshInstance3D] = []
+var body_profile: Dictionary = {}
+var fatigue
+var active_ragdoll
+var damage_accumulator
+var injury  # InjurySystem
+var last_ik_target := Vector3.ZERO
+# Feint system
+var is_feinting := false
+var feint_timer := 0.0
+# Composure reference (set by fight director)
+var composure_ref: Callable = func(): return 1.0
+var combat_state_machine
 
 func _ready() -> void:
+	combat_state_machine=CombatState.new()
 	collision_layer = 2
 	collision_mask = 3
 	var shape = CollisionShape3D.new()
@@ -71,6 +99,15 @@ func _ready() -> void:
 	model.add_child(visual)
 	skeleton = find_skeleton(visual)
 	animation = Animations.build(model,skeleton)
+	body_profile=BodyProfile.from_stats(profile_value("height",180.0),profile_value("reach",182.0),profile_value("weight",147.0))
+	apply_body_profile()
+	fatigue=Fatigue.new()
+	fatigue.configure(profile_value("stamina_max",100.0),profile_value("recovery",60.0))
+	stamina=fatigue.energy
+	active_ragdoll=ActiveRagdoll.new()
+	damage_accumulator=DamageAccumulator.new()
+	injury=InjurySystem.new()
+	injury.medical_stoppage_risk.connect(_on_medical_risk)
 	for side in ["Left","Right"]:
 		var attach = BoneAttachment3D.new()
 		attach.name = side+"FistAttachment"
@@ -90,16 +127,30 @@ func _ready() -> void:
 		area.set_meta("zone",zone)
 		add_child(area)
 		hurts.append(area)
-	# Team bands use original geometry with a subtle material tint on the opponent.
+	# Each fighter gets an independent dynamic skin material and damage atlas.
 	for mesh in visual.find_children("*","MeshInstance3D",true,false):
-		var material = mesh.get_active_material(0).duplicate() as StandardMaterial3D
-		material.vertex_color_use_as_albedo=true
-		material.albedo_color = Color.WHITE
-		mesh.material_override = material
-		if not is_player:
-			var opponent_material=ShaderMaterial.new()
-			opponent_material.shader=load("res://boxing/characters/opponent.gdshader")
-			mesh.material_override=opponent_material
+		var skin_material=ShaderMaterial.new()
+		skin_material.shader=load("res://boxing/characters/opponent.gdshader")
+		skin_material.set_shader_parameter("damage_map",damage_accumulator.texture)
+		skin_material.set_shader_parameter("damage_strength",1.0)
+		mesh.material_override=skin_material
+
+func profile_value(field: String, fallback: float) -> float:
+	if boxer_data and field in boxer_data: return float(boxer_data.get(field))
+	return fallback
+
+func apply_body_profile() -> void:
+	if not skeleton or body_profile.is_empty(): return
+	model.scale=Vector3.ONE*body_profile.height_scale
+	for bone_name in ["LeftUpperArm","LeftForeArm","RightUpperArm","RightForeArm"]:
+		var bone=skeleton.find_bone(bone_name)
+		if bone>=0: skeleton.set_bone_pose_scale(bone,Vector3(body_profile.arm_scale,1,1))
+	for bone_name in ["LeftThigh","LeftShin","RightThigh","RightShin"]:
+		var bone=skeleton.find_bone(bone_name)
+		if bone>=0: skeleton.set_bone_pose_scale(bone,Vector3(1,body_profile.leg_scale,1))
+	for bone_name in ["Spine","Chest"]:
+		var bone=skeleton.find_bone(bone_name)
+		if bone>=0: skeleton.set_bone_pose_scale(bone,Vector3(body_profile.torso_width,1,body_profile.torso_depth))
 
 func find_skeleton(node: Node) -> Skeleton3D:
 	if node is Skeleton3D: return node
@@ -135,6 +186,8 @@ func make_area(label: String,radius: float,layer: int,mask: int) -> Area3D:
 	return area
 
 func set_state(next: State,duration: float=0.0,clip: String="") -> void:
+	if combat_state_machine:
+		combat_state_machine.request(next,duration,StringName(clip))
 	if state==State.ATTACKING and next!=State.ATTACKING:
 		current_punch=""
 		if next!=State.IDLE:
@@ -153,6 +206,9 @@ func can_act() -> bool:
 func attack(punch: String) -> bool:
 	if not Punches.DATA.has(punch): return false
 	if state==State.ATTACKING:
+		update_punch_ik()
+		if combat_state_machine:
+			combat_state_machine.buffer({"kind":CombatTypes.ActionKind.ATTACK,"name":StringName(punch)},.20)
 		buffered = punch
 		buffer_life = .20
 		return false
@@ -162,13 +218,17 @@ func attack(punch: String) -> bool:
 	if stamina<cost: return false
 	attack_stamina = stamina
 	stamina -= cost
+	fatigue.spend(cost,1.0+minf(combo_count,4)*.12)
+	stamina=fatigue.energy
 	combo_count = combo_count+1 if combo_window>0 else 1
 	combo_window = 1.05
-	attack_scale = lerpf(.64,1.0,stamina/100)
+	attack_scale = fatigue.animation_factor()
 	attack_id += 1
 	attack_time = 0
 	attack_connected = false
 	current_punch = punch
+	if opponent:
+		last_ik_target=opponent.global_position+Vector3(0,1.18 if punch.begins_with("body") else 1.66,0)
 	thrown += 1
 	defense = ""
 	set_state(State.ATTACKING,0,punch)
@@ -180,13 +240,38 @@ func dodge(kind: String) -> void:
 	defense = kind
 	set_state(State.DODGING,.5,kind)
 
+func feint(kind: String) -> void:
+	# Amago: inicia la animación de un golpe pero la cancela a mitad
+	if not can_act() or stamina < 3: return
+	if not Punches.DATA.has(kind): return
+	is_feinting = true
+	feint_timer = Punches.DATA[kind][1] * 0.8  # Hasta justo antes del activo
+	stamina -= 2.5
+	set_state(State.ATTACKING, 0, kind)  # Usa la misma anim del golpe
+	current_punch = "feint_" + kind  # Marcado como feint, no conecta
+
+
+func _on_medical_risk() -> void:
+	medical_risk.emit(self)
+
 func _physics_process(delta: float) -> void:
 	if not skeleton: return
+	fatigue.tick(delta,state==State.BLOCKING)
+	stamina=fatigue.energy
+	active_ragdoll.step(delta,fatigue.drive_factor())
+	apply_ragdoll_pose()
 	state_time = maxf(0,state_time-delta)
 	buffer_life = maxf(0,buffer_life-delta)
 	combo_window = maxf(0,combo_window-delta)
 	if combo_window<=0: combo_count=0
 	if buffer_life<=0: buffered=""
+	if is_feinting:
+		feint_timer -= delta
+		if feint_timer <= 0.0:
+			is_feinting = false
+			current_punch = ""
+			set_state(State.IDLE)
+		return
 	if is_player and fighting: read_input()
 	if opponent and state not in [State.KNOCKDOWN,State.KO,State.GET_UP]:
 		var flat = opponent.global_position-global_position
@@ -214,14 +299,32 @@ func _physics_process(delta: float) -> void:
 		if state==State.ATTACKING: speed*=.48
 		if state==State.BLOCKING: speed*=.56
 		if state in [State.HURT,State.STUNNED,State.GET_UP]: speed*=.12
+		
+		step_cooldown = maxf(0, step_cooldown - delta)
+		
 		var direction = global_basis*Vector3(move_input.x,0,-move_input.y)
-		var desired = direction*speed if fighting else Vector3.ZERO
-		velocity.x = move_toward(velocity.x,desired.x,delta*10)
-		velocity.z = move_toward(velocity.z,desired.z,delta*10)
+		
+		if is_stepping:
+			velocity.x = step_velocity.x
+			velocity.z = step_velocity.z
+			if step_cooldown <= 0.0:
+				is_stepping = false
+		else:
+			if direction.length() > 0.1 and fighting and state in [State.IDLE, State.MOVING] and step_cooldown <= 0:
+				is_stepping = true
+				step_cooldown = step_duration + 0.15 # Pause between steps
+				step_velocity = direction * (speed * 1.8)
+				velocity.x = step_velocity.x
+				velocity.z = step_velocity.z
+			else:
+				var desired = direction*speed*0.3 if (fighting and state == State.ATTACKING) else Vector3.ZERO
+				velocity.x = move_toward(velocity.x,desired.x,delta*10)
+				velocity.z = move_toward(velocity.z,desired.z,delta*10)
+				
 		velocity.y -= 9.8*delta
 		move_and_slide()
 		if state in [State.IDLE,State.MOVING]:
-			state = State.MOVING if direction.length()>.1 else State.IDLE
+			state = State.MOVING if is_stepping else State.IDLE
 	else:
 		velocity=Vector3.ZERO
 	animation.tree.set("parameters/Footwork/blend_position",move_input if fighting else Vector2.ZERO)
@@ -230,12 +333,29 @@ func _physics_process(delta: float) -> void:
 	model.rotation.x = lerp_angle(model.rotation.x,target_roll,minf(1,delta*5))
 	model.position.y = lerpf(model.position.y,.17 if down else (-.20*sin((.5-state_time)*PI/.5) if state==State.DODGING and defense=="duck" else 0.0),minf(1,delta*10))
 	if state!=State.ATTACKING and state not in [State.KNOCKDOWN,State.KO]:
-		stamina = minf(100,stamina+delta*lerpf(14,6,clampf(body_damage/100,0,1))*(.6 if state==State.BLOCKING else 1.0))
-	guard = minf(100,guard+delta*6)
+		guard = minf(100,guard+delta*6)
 	stun=maxf(0,stun-delta*8)
 	knockdown_meter=maxf(0,knockdown_meter-delta*2.5)
 	recovery=maxf(0,recovery-delta)
 	update_hitboxes(delta)
+
+func apply_ragdoll_pose() -> void:
+	for bone_name in ActiveRagdoll.BONES:
+		var bone=skeleton.find_bone(bone_name)
+		if bone<0: continue
+		var offset: Vector3=active_ragdoll.offset_for(bone_name)
+		if offset.length_squared()>.000001:
+			skeleton.set_bone_pose_rotation(bone,Quaternion.from_euler(offset)*skeleton.get_bone_pose_rotation(bone))
+
+func update_punch_ik() -> void:
+	if not opponent or current_punch=="": return
+	var zone="body" if current_punch.begins_with("body") else "head"
+	var target=opponent.global_position+Vector3(0,1.18 if zone=="body" else 1.66,0)
+	var side=Punches.DATA[current_punch][5]
+	var shoulder_name="LeftUpperArm" if side==0 else "RightUpperArm"
+	var shoulder=skeleton.global_transform*(skeleton.get_bone_global_pose(skeleton.find_bone(shoulder_name)).origin)
+	var solution=ArmIK.solve(shoulder,.25,.23,target)
+	last_ik_target=solution.target
 
 func read_input() -> void:
 	move_input=Input.get_vector("box_left","box_right","box_forward","box_back")
@@ -263,6 +383,8 @@ func update_hitboxes(delta: float) -> void:
 	hurts[1].global_position = skeleton.global_transform*(skeleton.get_bone_global_pose(chest).origin+Vector3(0,-.10,0))
 	for hand in 2:
 		var point = fist_points[hand].global_position
+		var aim_error=(1.0-fatigue.accuracy_factor())*.055
+		point+=global_basis.x*sin(float(attack_id)*9.17+attack_time*31.0)*aim_error
 		fists[hand].global_position=point
 		var effective=false
 		if fighting and state==State.ATTACKING:
@@ -285,13 +407,15 @@ func update_hitboxes(delta: float) -> void:
 					if area.has_meta("fighter") and area.get_meta("fighter")!=self:
 						var victim=area.get_meta("fighter")
 						var accuracy=clampf(1.0-point.distance_to(area.global_position),.6,1.0)
-						if victim.receive_hit(self,current_punch,area.get_meta("zone"),fist_speed,accuracy,attack_id):
+						var contact_position=old_fists[hand].lerp(point,float(step)/samples)
+						var contact={"position":contact_position,"velocity":(point-old_fists[hand])/maxf(delta,.001),"hand":hand}
+						if victim.receive_hit(self,current_punch,area.get_meta("zone"),fist_speed,accuracy,attack_id,contact):
 							attack_connected=true
 							break
 				if attack_connected: break
 		old_fists[hand]=point
 
-func receive_hit(attacker: Node,punch: String,zone: String,speed: float,accuracy: float,id: int) -> bool:
+func receive_hit(attacker: Node,punch: String,zone: String,speed: float,accuracy: float,id: int,contact: Dictionary={}) -> bool:
 	if not fighting or state in [State.KNOCKDOWN,State.KO,State.GET_UP]: return false
 	var key=str(attacker.get_instance_id())+":"+str(id)
 	if hits_received.has(key): return false
@@ -300,7 +424,13 @@ func receive_hit(attacker: Node,punch: String,zone: String,speed: float,accuracy
 	var counter=state==State.ATTACKING or recovery>.03
 	var blocked=state==State.BLOCKING and guard>0 and defense==("block_high" if zone=="head" else "block_body")
 	var base: float=Punches.DATA[punch][3]
+	# Golpes parcialmente conectados: rozar, impactar guante, conexión parcial
+	var glance_factor = 1.0
+	if accuracy < 0.72:
+		glance_factor = lerpf(0.35, 0.85, (accuracy - 0.6) / 0.12)
 	var amount=Punches.damage(base,attacker.attack_stamina,speed,accuracy,counter,zone=="body",blocked)
+	amount *= glance_factor
+	amount*=attacker.fatigue.damage_factor()
 	health=maxf(0,health-amount)
 	if zone=="head": head_damage+=amount
 	else:
@@ -314,6 +444,22 @@ func receive_hit(attacker: Node,punch: String,zone: String,speed: float,accuracy
 		knockdown_meter+=amount*(1.0+head_damage/140.0)
 		set_state(State.STUNNED if stun>32 else State.HURT,.20+base*.013,"stagger" if stun>32 else "hurt_"+zone)
 		velocity += (global_position-attacker.global_position).normalized()*minf(1.5,amount*.09)
+	var cam = get_viewport().get_camera_3d()
+	if cam and "shake" in cam:
+		cam.shake = minf(cam.shake + amount * 0.005, 0.18)
+	var contact_position: Vector3=contact.get("position",global_position)
+	var local=to_local(contact_position)
+	# Registrar lesión
+	if injury:
+		injury.receive_damage(zone, punch, amount, local)
+	var glove_velocity: Vector3=contact.get("velocity",(global_position-attacker.global_position).normalized()*speed*3.0)
+	var guard_absorption=.70 if blocked else 0.0
+	var attacker_mass=80.0*float(attacker.body_profile.get("muscle_mass",1.0))
+	active_ragdoll.apply_contact(zone,contact_position,glove_velocity,attacker_mass,guard_absorption,fatigue.drive_factor())
+	local=to_local(contact_position)
+	var uv=Vector2(clampf(.5+local.x*.65,.08,.92),clampf(.28-local.y*.20+(0.30 if zone=="body" else 0.0),.08,.92))
+	var region=("head_left" if local.x<-.08 else "head_right" if local.x>.08 else "head_center") if zone=="head" else ("body_left" if local.x<0 else "body_right")
+	damage_accumulator.stamp(region,uv,amount/18.0,.055+amount*.002,.35 if not blocked else .05)
 	attacker.landed+=1
 	attacker.round_quality+=amount*(.4 if blocked else 1.0)
 	var info={"damage":amount,"blocked":blocked,"counter":counter,"zone":zone,"punch":punch}

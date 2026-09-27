@@ -133,22 +133,23 @@ func build_crowd() -> void:
 	var crowd_mesh=surface.commit()
 	crowd_mesh.surface_set_material(0,mat)
 	multi.mesh=crowd_mesh
-	multi.instance_count=144
+	var crowd_count = 64 if (OS.has_feature("web") or OS.has_feature("mobile")) else 120
+	multi.instance_count=crowd_count
 	crowd.multimesh=multi
-	crowd.visibility_range_end=35
+	crowd.visibility_range_end=28
 	add_child(crowd)
 	var rng=RandomNumberGenerator.new()
 	rng.seed=441
-	for i in 144:
-		var row=i/36
-		var col=i%36
-		var side=1 if col>=18 else -1
-		var p=Vector3((col%18-8.5)*.57,.15+row*.5,side*(5.0+row*.7))
+	for i in crowd_count:
+		var row=i/30
+		var col=i%30
+		var side=1 if col>=15 else -1
+		var p=Vector3((col%15-7.0)*.65,.15+row*.5,side*(5.0+row*.7))
 		var trans=Transform3D(Basis.IDENTITY,p)
 		crowd_base.append(trans)
 		multi.set_instance_transform(i,trans)
 		multi.set_instance_color(i,Color.from_hsv(rng.randf(),.35,rng.randf_range(.09,.3)))
-		if col==0 or col==18:
+		if col==0 or col==15:
 			box("Bleacher",Vector3(11,.35,1),Vector3(0,p.y-.6,p.z),Color("242b32"))
 
 func build_referee() -> void:
@@ -173,8 +174,8 @@ func build_referee() -> void:
 func _process(delta: float) -> void:
 	excitement=move_toward(excitement,0,delta*.3)
 	crowd_clock+=delta
-	if excitement>.05:
-		for i in crowd_base.size():
+	if excitement>.08 and crowd:
+		for i in range(0, crowd_base.size(), 2):
 			var trans=crowd_base[i]
 			trans.origin.y+=absf(sin(crowd_clock*7+i*.7))*.12*excitement
 			crowd.multimesh.set_instance_transform(i,trans)

@@ -77,6 +77,49 @@ func _ready() -> void:
 	resume.text="CONTINUAR  /  ESC"
 	resume.pressed.connect(toggle_pause)
 	pause_box.add_child(resume)
+	_setup_mobile_controls()
+
+func _setup_mobile_controls() -> void:
+	if not OS.has_feature("mobile") and not OS.has_feature("web"):
+		return
+	
+	var tex = load("res://icon.svg")
+	if not tex: return
+	
+	var pad_node = Control.new()
+	pad_node.position = Vector2(100, get_viewport_rect().size.y - 120)
+	add_child(pad_node)
+	
+	var dirs = [
+		{"name": "box_forward", "pos": Vector2(0, -60)},
+		{"name": "box_back", "pos": Vector2(0, 60)},
+		{"name": "box_left", "pos": Vector2(-60, 0)},
+		{"name": "box_right", "pos": Vector2(60, 0)}
+	]
+	for d in dirs:
+		var btn = TouchScreenButton.new()
+		btn.texture_normal = tex
+		btn.action = d.name
+		btn.position = d.pos - Vector2(32, 32)
+		btn.scale = Vector2(0.5, 0.5)
+		btn.modulate = Color(1, 1, 1, 0.3)
+		pad_node.add_child(btn)
+		
+	var attack_btn = TouchScreenButton.new()
+	attack_btn.texture_normal = tex
+	attack_btn.action = "box_jab"
+	attack_btn.position = Vector2(get_viewport_rect().size.x - 120, get_viewport_rect().size.y - 120) - Vector2(32, 32)
+	attack_btn.scale = Vector2(0.8, 0.8)
+	attack_btn.modulate = Color(1, 0.3, 0.3, 0.5)
+	add_child(attack_btn)
+	
+	var block_btn = TouchScreenButton.new()
+	block_btn.texture_normal = tex
+	block_btn.action = "box_guard"
+	block_btn.position = attack_btn.position + Vector2(-90, -40)
+	block_btn.scale = Vector2(0.6, 0.6)
+	block_btn.modulate = Color(0.3, 0.3, 1.0, 0.5)
+	add_child(block_btn)
 
 func panel(dimensions: Vector2) -> PanelContainer:
 	var p=PanelContainer.new()
@@ -116,7 +159,20 @@ func row(parent: Node,text: String,widget: Control) -> void:
 func show_result(text: String) -> void:
 	var p=fight.player
 	var e=fight.enemy
-	result_label.text=text+"\n\nImpactos: %d / %d    —    %d / %d\nCaídas: %d    —    %d"%[p.landed,p.thrown,e.landed,e.thrown,p.knockdowns,e.knockdowns]
+	# Estadísticas totales de la pelea
+	var sp = fight.momentum.total_stats(true) if fight.momentum else {"thrown":p.thrown,"connected":p.landed,"knockdowns":p.knockdowns}
+	var se = fight.momentum.total_stats(false) if fight.momentum else {"thrown":e.thrown,"connected":e.landed,"knockdowns":e.knockdowns}
+	var pp = "%.0f%%" % (float(sp.get("connected",0)) / maxf(1,sp.get("thrown",1)) * 100)
+	var ep = "%.0f%%" % (float(se.get("connected",0)) / maxf(1,se.get("thrown",1)) * 100)
+	result_label.text = text + "\n\n" + \
+		"%-8s %s\n" % ["ALONSO", "VEGA"] + \
+		"%-5d  LANZADOS  %5d\n" % [sp.get("thrown",0), se.get("thrown",0)] + \
+		"%-5d CONECTADOS %5d\n" % [sp.get("connected",0), se.get("connected",0)] + \
+		"%-5s PRECISIÓN  %5s\n" % [pp, ep] + \
+		"%-5d  CABEZA    %5d\n" % [sp.get("head",0), se.get("head",0)] + \
+		"%-5d  CUERPO    %5d\n" % [sp.get("body",0), se.get("body",0)] + \
+		"%-5d  COUNTERS  %5d\n" % [sp.get("counters",0), se.get("counters",0)] + \
+		"%-5d  CAÍDAS    %5d" % [sp.get("knockdowns",0), se.get("knockdowns",0)]
 	for card in fight.scorecards:
 		result_label.text+="\nRound %d:  %d — %d"%[card.round,card.player,card.enemy]
 	results.show()
@@ -154,7 +210,7 @@ func _draw() -> void:
 		draw_rect(Rect2(x,h-144,386,119),Color(.025,.04,.065,.91))
 		draw_rect(Rect2(x,h-144,4,119),color)
 		text_at(Vector2(x+18,h-114),fighter.boxer_name,23)
-		text_at(Vector2(x+260,h-116),"%d / %d"%[fighter.landed,fighter.thrown],13,Color("a8b6c6"))
+		# Se elimina "%d / %d" porque parecía información de debug
 		bar(Vector2(x+18,h-101),350,fighter.health,color,9)
 		text_at(Vector2(x+18,h-71),"STAMINA",10,Color("9cacb8"))
 		bar(Vector2(x+89,h-79),279,fighter.stamina,Color("ddc781"))
@@ -162,6 +218,15 @@ func _draw() -> void:
 		bar(Vector2(x+75,h-50),91,100-fighter.head_damage,Color("a7bfc4"),5)
 		text_at(Vector2(x+191,h-43),"CUERPO",10,Color("9cacb8"))
 		bar(Vector2(x+248,h-50),120,100-fighter.body_damage,Color("a7bfc4"),5)
+		# Indicadores de lesión pequeños
+		if fighter.injury:
+			var icons = ""
+			if fighter.injury.eye_cut_left >= 1: icons += "✂°"
+			if fighter.injury.eye_swollen >= 1: icons += "👁°"
+			if fighter.injury.nose_damage >= 1: icons += "👃°"
+			if fighter.injury.body_punishment >= 2: icons += "🦴°"
+			if icons != "":
+				text_at(Vector2(x+18, h-22), icons, 12, Color("e07070"))
 	draw_rect(Rect2(540,h-125,200,100),Color(.025,.04,.065,.94))
 	text_at(Vector2(576,h-100),"ROUND %d / %s"%[fight.round_number,fight.rounds_choice],14,Color("edc27e"))
 	var seconds=int(ceil(fight.phase_time if fight.phase==fight.Phase.REST else fight.remaining))

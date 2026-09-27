@@ -1,3 +1,8 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
+# Evitar compilaciones pesadas de Godot
+export_web/
+*.pck
+*.zip
+*.log

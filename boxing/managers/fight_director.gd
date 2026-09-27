@@ -3,6 +3,10 @@ extends Node
 signal phase_changed(phase)
 signal result_ready(text)
 enum Phase { PRE_FIGHT, ROUND_START, FIGHTING, KNOCKDOWN, ROUND_END, REST, FIGHT_END }
+
+const MomentumSystem = preload("res://boxing/combat/momentum_system.gd")
+const DistanceSystem  = preload("res://boxing/combat/distance_system.gd")
+const CornerPanel     = preload("res://boxing/ui/corner_panel.gd")
 @export_enum("3","6","8","10","12") var rounds_choice = "3"
 @export_range(15,180,5) var round_time=120.0
 @export_range(3,60,1) var rest_time=15.0
@@ -25,6 +29,9 @@ var total_enemy=0
 var banner="CORNER CLUB"
 var subtitle="BOXEO / EXHIBICIÓN"
 var result=""
+var momentum: MomentumSystem
+var distance: DistanceSystem
+var corner_panel: CornerPanel
 
 func change(next: Phase,seconds: float=0) -> void:
 	phase=next
@@ -38,10 +45,58 @@ func change(next: Phase,seconds: float=0) -> void:
 			boxer.current_punch=""
 			if boxer.state not in [boxer.State.KNOCKDOWN,boxer.State.KO,boxer.State.VICTORY,boxer.State.DEFEAT,boxer.State.GET_UP]:
 				boxer.set_state(boxer.State.IDLE)
+	if next == Phase.REST:
+		_show_corner()
+	elif next == Phase.ROUND_START:
+		_hide_corner()
 	phase_changed.emit(next)
+
+func _show_corner() -> void:
+	if corner_panel:
+		corner_panel.show_corner(round_number)
+
+func _hide_corner() -> void:
+	if corner_panel:
+		corner_panel.hide_corner()
+
+func _init_systems() -> void:
+	momentum = MomentumSystem.new()
+	distance = DistanceSystem.new()
+	# Wire clinch signals
+	distance.clinch_started.connect(_on_clinch_start)
+	distance.clinch_broken.connect(_on_clinch_break)
+	# Corner panel
+	corner_panel = CornerPanel.new()
+	corner_panel.fight = self
+	corner_panel.injury_p = player.injury
+	corner_panel.momentum = momentum
+	add_child(corner_panel)
+
+func _on_clinch_start() -> void:
+	if phase != Phase.FIGHTING: return
+	banner = "CLINCH"
+	phase_time = 0.4
+	# Ambos peleadores dejan de golpear mientras están enredados
+	for boxer in [player, enemy]:
+		if boxer.state == boxer.State.ATTACKING:
+			boxer.set_state(boxer.State.IDLE)
+
+func _on_clinch_break() -> void:
+	pass  # El banner desaparece naturalmente
+
+func _on_referee_break() -> void:
+	# El árbitro separa: empuja a ambos peleadores
+	var mid = (player.global_position + enemy.global_position) / 2.0
+	var away = (player.global_position - mid).normalized()
+	player.velocity = away * 2.5
+	enemy.velocity  = -away * 2.5
+	distance.on_referee_break()
+	banner = "BREAK"
+	phase_time = 1.2
 
 func begin() -> void:
 	if phase!=Phase.PRE_FIGHT: return
+	_init_systems()
 	start_round()
 
 func start_round() -> void:
@@ -52,6 +107,7 @@ func start_round() -> void:
 		boxer.round_knockdowns=0
 		boxer.round_quality=0
 		boxer.set_state(boxer.State.IDLE)
+	if momentum: momentum.reset_round()
 	banner="ROUND %d"%round_number
 	subtitle="Mantén la distancia. Protege tu guardia."
 	change(Phase.ROUND_START,2.4)
@@ -70,6 +126,15 @@ func _process(delta: float) -> void:
 		Phase.FIGHTING:
 			remaining=maxf(0,remaining-delta)
 			if phase_time<=0: banner=""
+			# Actualizar sistema de distancia y clinch
+			if distance and player and enemy:
+				distance.update(delta,
+					player.global_position.distance_to(enemy.global_position),
+					player.state, enemy.state)
+				if distance.should_break_clinch():
+					_on_referee_break()
+			# Actualizar momentum (tick de compostura)
+			if momentum: momentum.tick(delta)
 			if remaining<=0:
 				score_round()
 				banner="FIN DEL ROUND"
@@ -176,3 +241,21 @@ func on_hit(attacker,victim,info: Dictionary) -> void:
 	if info.counter:
 		banner="COUNTER"
 		phase_time=.55
+	# Momentum y estadísticas
+	if momentum:
+		momentum.record_hit(attacker == player, info)
+		# Si la compostura del rival está baja, hace que retroceda
+		if attacker == player and not info.blocked:
+			var comp = momentum.composure_enemy
+			if comp < 0.5 and enemy.state in [enemy.State.IDLE, enemy.State.MOVING]:
+				enemy.velocity += (enemy.global_position - player.global_position).normalized() * lerpf(0.0, 2.5, 1.0 - comp)
+
+func on_throw(attacker) -> void:
+	if momentum:
+		momentum.record_throw(attacker == player)
+
+func on_medical_risk(boxer) -> void:
+	if phase != Phase.FIGHTING: return
+	# El árbitro detiene si la lesión es grave y el luchador ya recibió daño suficiente
+	if boxer.injury and boxer.injury.has_medical_risk() and boxer.head_damage > 60:
+		finish(boxer.opponent, "TKO · parada médica por lesión")

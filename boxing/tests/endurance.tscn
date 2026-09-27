@@ -1,4 +1,6 @@
-[gd_scene load_steps=2 format=3]
-[ext_resource type="Script" path="res://boxing/tests/endurance.gd" id="1"]
-[node name="Endurance" type="Node3D"]
+[gd_scene format=3 uid="uid://cdh8k5leqj51f"]
+
+[ext_resource type="Script" uid="uid://hivmit7cqfdu" path="res://boxing/tests/endurance.gd" id="1"]
+
+[node name="Endurance" type="Node3D" unique_id=1445295006]
 script = ExtResource("1")

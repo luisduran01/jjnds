@@ -26,6 +26,12 @@ const DESCRIPTIONS = {
 }
 
 func _ready() -> void:
+	# Solo Quick Fight queda disponible en el menú clásico.
+	for path in ["UI/MenuPanel/btn_career","UI/MenuPanel/btn_training","UI/MenuPanel/btn_roster","UI/MenuPanel/btn_options"]:
+		var button=get_node_or_null(path)
+		if button: button.hide()
+	# El menú reducido no muestra el perfil/carrera anterior.
+	profile_label.hide()
 	# Configurar botones
 	var index = 0
 	for btn in btn_container.get_children():
@@ -188,9 +194,11 @@ func _on_btn_pressed(btn: Button) -> void:
 			elif tm: tm.change_scene("res://scenes/career/career_menu.tscn")
 			else: get_tree().change_scene_to_file("res://scenes/career/career_menu.tscn")
 		"btn_quick":
-			if cm: cm.change_scene("res://scenes/menus/character_select.tscn")
-			elif tm: tm.change_scene("res://scenes/menus/character_select.tscn")
-			else: get_tree().change_scene_to_file("res://scenes/menus/character_select.tscn")
+			var gm=get_node_or_null("/root/GameManager")
+			if gm: gm.configure_fight("quick",load("res://resources/boxers/alonso.tres"),load("res://resources/boxers/alex_volkov.tres"),3,"Pressure Fighter")
+			if cm: cm.change_scene("res://boxing/main.tscn")
+			elif tm: tm.change_scene("res://boxing/main.tscn")
+			else: get_tree().change_scene_to_file("res://boxing/main.tscn")
 		"btn_training":
 			# Lanzar el minijuego 2D
 			if cm: cm.change_scene("res://assets/main.tscn")
