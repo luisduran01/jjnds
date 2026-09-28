@@ -3,8 +3,13 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bc1c4qovikmfe"
+<<<<<<< HEAD:boxing/characters/animations/jab1_0.png.import
 path.s3tc="res://.godot/imported/jab1_0.png-17a335fe1dd4e00b61ce968e1a36fa27.s3tc.ctex"
 path.etc2="res://.godot/imported/jab1_0.png-17a335fe1dd4e00b61ce968e1a36fa27.etc2.ctex"
+=======
+path.s3tc="res://.godot/imported/jab1_0.png-8828159703e305e752d25e3db78e5187.s3tc.ctex"
+path.etc2="res://.godot/imported/jab1_0.png-8828159703e305e752d25e3db78e5187.etc2.ctex"
+>>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449:characters/3d/animations/jab1_0.png.import
 metadata={
 "imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
@@ -12,8 +17,13 @@ metadata={
 
 [deps]
 
+<<<<<<< HEAD:boxing/characters/animations/jab1_0.png.import
 source_file="res://boxing/characters/animations/jab1_0.png"
 dest_files=["res://.godot/imported/jab1_0.png-17a335fe1dd4e00b61ce968e1a36fa27.s3tc.ctex", "res://.godot/imported/jab1_0.png-17a335fe1dd4e00b61ce968e1a36fa27.etc2.ctex"]
+=======
+source_file="res://characters/3d/animations/jab1_0.png"
+dest_files=["res://.godot/imported/jab1_0.png-8828159703e305e752d25e3db78e5187.s3tc.ctex", "res://.godot/imported/jab1_0.png-8828159703e305e752d25e3db78e5187.etc2.ctex"]
+>>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449:characters/3d/animations/jab1_0.png.import
 
 [params]
 

@@ -3,8 +3,13 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dnt34ao7h36kw"
+<<<<<<< HEAD:boxing/characters/animations/walk3_0.png.import
 path.s3tc="res://.godot/imported/walk3_0.png-637d70dc782b6f21011f770493204315.s3tc.ctex"
 path.etc2="res://.godot/imported/walk3_0.png-637d70dc782b6f21011f770493204315.etc2.ctex"
+=======
+path.s3tc="res://.godot/imported/walk3_0.png-f7d27af82edc19a85d8c2647def87ed5.s3tc.ctex"
+path.etc2="res://.godot/imported/walk3_0.png-f7d27af82edc19a85d8c2647def87ed5.etc2.ctex"
+>>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449:characters/3d/animations/walk3_0.png.import
 metadata={
 "imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
@@ -12,8 +17,13 @@ metadata={
 
 [deps]
 
+<<<<<<< HEAD:boxing/characters/animations/walk3_0.png.import
 source_file="res://boxing/characters/animations/walk3_0.png"
 dest_files=["res://.godot/imported/walk3_0.png-637d70dc782b6f21011f770493204315.s3tc.ctex", "res://.godot/imported/walk3_0.png-637d70dc782b6f21011f770493204315.etc2.ctex"]
+=======
+source_file="res://characters/3d/animations/walk3_0.png"
+dest_files=["res://.godot/imported/walk3_0.png-f7d27af82edc19a85d8c2647def87ed5.s3tc.ctex", "res://.godot/imported/walk3_0.png-f7d27af82edc19a85d8c2647def87ed5.etc2.ctex"]
+>>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449:characters/3d/animations/walk3_0.png.import
 
 [params]
 

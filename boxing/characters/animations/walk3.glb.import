@@ -4,12 +4,21 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://piebp4376bv4"
+<<<<<<< HEAD:boxing/characters/animations/walk3.glb.import
 path="res://.godot/imported/walk3.glb-9b1707ff77260985f4a7dc715b8da42b.scn"
 
 [deps]
 
 source_file="res://boxing/characters/animations/walk3.glb"
 dest_files=["res://.godot/imported/walk3.glb-9b1707ff77260985f4a7dc715b8da42b.scn"]
+=======
+path="res://.godot/imported/walk3.glb-385e3378b1e09f21251468c62056bb51.scn"
+
+[deps]
+
+source_file="res://characters/3d/animations/walk3.glb"
+dest_files=["res://.godot/imported/walk3.glb-385e3378b1e09f21251468c62056bb51.scn"]
+>>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449:characters/3d/animations/walk3.glb.import
 
 [params]
 

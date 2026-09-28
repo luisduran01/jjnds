@@ -4,12 +4,21 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://c35pl6n4sgkc"
+<<<<<<< HEAD:boxing/characters/animations/jab1.glb.import
 path="res://.godot/imported/jab1.glb-0f144959e3abf9f1cb1bbf7b7b03fd50.scn"
 
 [deps]
 
 source_file="res://boxing/characters/animations/jab1.glb"
 dest_files=["res://.godot/imported/jab1.glb-0f144959e3abf9f1cb1bbf7b7b03fd50.scn"]
+=======
+path="res://.godot/imported/jab1.glb-14561bcaef700c313c187e0b6ccca161.scn"
+
+[deps]
+
+source_file="res://characters/3d/animations/jab1.glb"
+dest_files=["res://.godot/imported/jab1.glb-14561bcaef700c313c187e0b6ccca161.scn"]
+>>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449:characters/3d/animations/jab1.glb.import
 
 [params]
 

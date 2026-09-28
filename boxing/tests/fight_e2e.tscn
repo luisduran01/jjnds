@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 [gd_scene format=3 uid="uid://d15xypehn2cwu"]
+=======
+[gd_scene format=3 uid="uid://bqf2e2efight01"]
+>>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449
 
 [ext_resource type="Script" path="res://boxing/tests/fight_e2e.gd" id="1"]
 

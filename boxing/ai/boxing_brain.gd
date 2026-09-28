@@ -44,7 +44,10 @@ func decide() -> void:
 	var distance: float=f.global_position.distance_to(target.global_position)
 	var edge=maxf(absf(f.position.x),absf(f.position.z))>2.55
 	if rng.randf()<.08: direction*=-1
-	var desired: float=p.range+(.2 if f.health<30 else 0)
+	# A style's preferred range must never exceed what this fighter's own arm can
+	# cover, or the AI plants itself outside its punches and swings at air.
+	var arm_range: float = f.working_range()
+	var desired: float=minf(p.range+(.2 if f.health<30 else 0),arm_range)
 	f.move_input=Vector2(direction*p.circle*.45,0)
 	if edge:
 		var center: Vector3=f.global_basis.inverse()*(-f.position).normalized()
@@ -93,18 +96,31 @@ func decide() -> void:
 			return
 	if incoming=="": observed_attack=""
 	var punish: bool=target.recovery>.02 or (target.state==target.State.ATTACKING and target.attack_time>.26)
-	if punish and distance<1.08 and rng.randf()<p.counter and f.stamina>18:
-		if f.attack("cross" if distance>.8 else "left_hook"):
+	if punish and distance<arm_range and rng.randf()<p.counter and f.stamina>18:
+		# Counter with whatever actually reaches from here.
+		var counter_punch: String="cross"
+		if distance<=f.punch_envelope("left_hook"): counter_punch="left_hook"
+		if distance<=f.punch_envelope("right_uppercut"): counter_punch="right_uppercut"
+		if f.attack(counter_punch):
 			strategy=Strategy.COUNTER
 			cooldown=.7
 		return
-	if cooldown>0 or distance>1.12 or f.stamina<20: return
+	if cooldown>0 or distance>arm_range or f.stamina<20: return
 	if chain.is_empty():
+		var straight_ok: bool=distance<=f.punch_envelope("jab")
+		var hook_ok: bool=distance<=f.punch_envelope("left_hook")
+		var upper_ok: bool=distance<=f.punch_envelope("right_uppercut")
+		if not (straight_ok or hook_ok or upper_ok):
+			# Nothing reaches from here: keep closing instead of throwing air.
+			return
+		# The jab always leads, at every range: it is the punch that sets up
+		# everything else. Inside the pocket the follow-ups shorten instead of
+		# replacing the lead.
 		chain=["jab","cross"]
-		if rng.randf()<p.power: chain=["body_jab","right_hook"]
-		if distance<.78: chain=["body_hook","right_uppercut"]
-		if p.combo>=3: chain.append("left_hook")
-		if p.combo>=4: chain.append("body_cross")
+		if rng.randf()<p.power and straight_ok: chain=["body_jab","right_hook"]
+		if distance<.80 and hook_ok: chain=["jab","body_hook","right_uppercut"]
+		if p.combo>=3 and hook_ok: chain.append("left_hook")
+		if p.combo>=4 and straight_ok: chain.append("body_cross")
 		# Insertar amago ocasionalmente para decepcionar al rival
 		if rng.randf() < 0.15 and chain.size() > 0:
 			chain.insert(0, "feint_jab")

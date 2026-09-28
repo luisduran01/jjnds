@@ -4,12 +4,21 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://nwqo38f85kyv"
+<<<<<<< HEAD:boxing/characters/animations/cross1.glb.import
 path="res://.godot/imported/cross1.glb-d7ddc6a9b5eeea0e82c7a02b20cfd61c.scn"
 
 [deps]
 
 source_file="res://boxing/characters/animations/cross1.glb"
 dest_files=["res://.godot/imported/cross1.glb-d7ddc6a9b5eeea0e82c7a02b20cfd61c.scn"]
+=======
+path="res://.godot/imported/cross1.glb-7cbe51450f93caea0260d1d3a8499530.scn"
+
+[deps]
+
+source_file="res://characters/3d/animations/cross1.glb"
+dest_files=["res://.godot/imported/cross1.glb-7cbe51450f93caea0260d1d3a8499530.scn"]
+>>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449:characters/3d/animations/cross1.glb.import
 
 [params]
 

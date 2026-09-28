@@ -4,12 +4,21 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://mvajwnj8wuxt"
+<<<<<<< HEAD:boxing/characters/animations/dance.glb.import
 path="res://.godot/imported/dance.glb-ece2fdeaca8dccced3cfc2f29abe3418.scn"
 
 [deps]
 
 source_file="res://boxing/characters/animations/dance.glb"
 dest_files=["res://.godot/imported/dance.glb-ece2fdeaca8dccced3cfc2f29abe3418.scn"]
+=======
+path="res://.godot/imported/dance.glb-bd91a953605896e8ffe920856d36bb92.scn"
+
+[deps]
+
+source_file="res://characters/3d/animations/dance.glb"
+dest_files=["res://.godot/imported/dance.glb-bd91a953605896e8ffe920856d36bb92.scn"]
+>>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449:characters/3d/animations/dance.glb.import
 
 [params]
 

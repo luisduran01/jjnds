@@ -1,8 +1,10 @@
 extends RefCounted
 
 const Punches = preload("res://boxing/combat/punches.gd")
+const ReachProfile = preload("res://boxing/characters/reach_profile.gd")
 const EXTRA = ["idle","guard","forward","backward","left","right","pivot_left","pivot_right","block_high","block_body","dodge_left","dodge_right","slip","duck","weave","hurt_head","hurt_body","stagger","knockdown","fall","get_up","ko","victory","defeat"]
 
+<<<<<<< HEAD
 static func d(degrees: float) -> float:
 	return deg_to_rad(degrees)
 
@@ -14,6 +16,16 @@ static func gait_legs(input: Vector2, phase: float, amount: float) -> Dictionary
 	return {"LeftThigh":q_axis(Vector3.RIGHT,swing),"RightThigh":q_axis(Vector3.RIGHT,-swing),"LeftShin":q_axis(Vector3.RIGHT,-swing*.55),"RightShin":q_axis(Vector3.RIGHT,swing*.55)}
 
 static func build(model: Node3D, skeleton: Skeleton3D) -> Dictionary:
+=======
+# Fallback geometry when no measured reach is supplied; keeps the builder usable
+# on its own while the fighter always passes the resolved rig numbers.
+const DEFAULT_REACH := {
+	"upper": 0.25, "lower": 0.23, "total": 0.48, "shoulder_x": 0.21,
+}
+
+static func build(model: Node3D, skeleton: Skeleton3D, reach: Dictionary = {}) -> Dictionary:
+	var geometry := reach if not reach.is_empty() else DEFAULT_REACH
+>>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449
 	var player = AnimationPlayer.new()
 	player.name = "AnimationPlayer"
 	model.add_child(player)
@@ -33,7 +45,7 @@ static func build(model: Node3D, skeleton: Skeleton3D) -> Dictionary:
 			tracks.append(track)
 		for k in 31:
 			var t = float(k)/30.0
-			var pose = pose_for(clip,t)
+			var pose = pose_for(clip,t,geometry)
 			for b in skeleton.get_bone_count():
 				anim.rotation_track_insert_key(tracks[b],t*duration,pose.get(skeleton.get_bone_name(b),Quaternion.IDENTITY))
 		library.add_animation(clip,anim)
@@ -41,7 +53,11 @@ static func build(model: Node3D, skeleton: Skeleton3D) -> Dictionary:
 	var tree = AnimationTree.new()
 	tree.name = "AnimationTree"
 	model.add_child(tree)
-	tree.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_PHYSICS
+	# MANUAL: the mixer rewrites the whole pose on every automatic pass, which
+	# erased every procedural reaction (measured 0.000 deg on a clean cross).
+	# The fighter advances the mixer itself and then applies its procedural layers
+	# in a known order, so impacts survive instead of being overwritten.
+	tree.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	tree.anim_player = tree.get_path_to(player)
 	var blend = AnimationNodeBlendTree.new()
 	var locomotion = AnimationNodeBlendSpace2D.new()
@@ -86,18 +102,26 @@ static func build(model: Node3D, skeleton: Skeleton3D) -> Dictionary:
 	playback.start("guard")
 	return {"tree":tree,"player":player,"playback":playback}
 
-static func pose_for(clip: String,t: float) -> Dictionary:
+static func pose_for(clip: String,t: float,geometry: Dictionary = {}) -> Dictionary:
+	var measured: Dictionary = geometry if not geometry.is_empty() else DEFAULT_REACH
+	var upper_length: float = measured.get("upper", 0.25)
+	var lower_length: float = measured.get("lower", 0.23)
+	var total_length: float = measured.get("total", upper_length + lower_length)
+	var shoulder_x: float = measured.get("shoulder_x", 0.21)
 	var pose = {}
 	var wave = sin(t*TAU)
 	var fist = [Vector3(.18,1.57,.33),Vector3(-.19,1.56,.27)]
 	var torso = Vector3(0,0.13,0)
+	var chest = Vector3.ZERO
 	if clip in ["forward","backward","left","right"]:
 		pose["LeftThigh"] = Quaternion(Vector3.RIGHT,wave*.19)
 		pose["RightThigh"] = Quaternion(Vector3.RIGHT,-wave*.19)
 		pose["LeftShin"] = Quaternion(Vector3.RIGHT,maxf(0,-wave)*.22)
 		pose["RightShin"] = Quaternion(Vector3.RIGHT,maxf(0,wave)*.22)
+	var budget := total_length
 	if Punches.DATA.has(clip):
 		var d = Punches.DATA[clip]
+		var chain := ReachProfile.chain_for(clip)
 		var peak: float = (d[1]+d[2])*.5/d[0]
 		var extension = smoothstep(0,peak,t) if t<peak else 1.0-smoothstep(peak,1,t)
 		var side: int = d[5]
@@ -105,13 +129,13 @@ static func pose_for(clip: String,t: float) -> Dictionary:
 		var end = Vector3(sign_side*.04,1.76,.64)
 		if clip.begins_with("body"):
 			end.y = 1.16
-			torso.x = .16*extension
 		if d[6] == "hook":
 			end.x = -sign_side*.12
 			fist[side].x += sign_side*sin(t*PI)*.18
 			torso.y = -sign_side * extension * .34
 			pose["Hips"] = Quaternion.from_euler(Vector3(0.0, -sign_side * extension * .22, 0.0))
 		if d[6] == "upper":
+<<<<<<< HEAD
 			# Uppercuts now begin below the guard and rise through the target,
 			# instead of tracing the same horizontal line as a straight.
 			fist[side].y = 1.20
@@ -136,9 +160,32 @@ static func pose_for(clip: String,t: float) -> Dictionary:
 				pose["Hips"] = Quaternion.from_euler(Vector3(-extension * .07, -extension * .20, 0.0))
 				pose["RightThigh"] = Quaternion.from_euler(Vector3(extension * .17,0,0))
 				pose["RightShin"] = Quaternion.from_euler(Vector3(-extension * .10,0,0))
+=======
+			fist[side].y -= sin(t*PI)*.28
+			end.y = 1.7
+			end.z = .48
+		# Each punch may only spend the share of the arm its mechanics allow, so a
+		# hook cannot reach like a cross and an uppercut cannot reach like a jab.
+		budget = ReachProfile.extension_for(measured,clip)
+		# Kinetic chain, fired in order and not all at once:
+		# step/weight are paid by the legs and pelvis (Fighter + ActiveRagdoll);
+		# torso -> shoulder -> extension are paid here, in that order.
+		# The chain lands together: torso and shoulder arrive WITH the arm, so the
+		# punch's furthest, deepest and lowest point is one moment instead of the
+		# torso carrying the fist forward after the arm has already retracted.
+		# The pelvis (weight) and the footwork still lead, driven from the attack
+		# phase by ActiveRagdoll.set_punch_drive and Fighter.plan_punch_step.
+		var torso_ramp := clampf(extension*1.12,0.0,1.0)
+		var shoulder_ramp := clampf((extension-0.12)/0.88,0.0,1.0)
+		torso.y -= sign_side*float(chain["torso"])*0.42*torso_ramp
+		torso.x += float(chain["lean"])*0.34*extension
+		chest.y = -sign_side*float(chain["shoulder"])*0.26*shoulder_ramp
+		chest.x = float(chain["lean"])*0.10*extension
+		# rise: how much the punch climbs (uppercut) or drops (body shot). Scaled
+		# by the target height, which is what makes a body hook arrive low.
+		end.y += float(chain["rise"])*0.22*extension
+>>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449
 		fist[side] = fist[side].lerp(end,extension)
-		torso.y -= sign_side*extension*.26
-		torso.x += extension*.12
 	elif clip == "block_high":
 		fist = [Vector3(.12,1.68,.28),Vector3(-.12,1.68,.28)]
 	elif clip == "block_body":
@@ -156,15 +203,20 @@ static func pose_for(clip: String,t: float) -> Dictionary:
 	elif clip == "victory":
 		fist = [Vector3(.27,1.9,.08),Vector3(-.27,1.9,.08)]
 	pose["Spine"] = Quaternion.from_euler(torso)
+	pose["Chest"] = Quaternion.from_euler(chest)
 	pose["Head"] = Quaternion.from_euler(Vector3(.07,0,-torso.z*.3))
+	var tightest := absf(upper_length-lower_length)+0.001
+	# Never aim past the bone chain itself, otherwise the elbow locks straight
+	# while the wrist falls short of the requested target.
+	var longest := maxf(tightest,minf(budget,total_length-0.002))
 	for side in 2:
 		var s = 1.0 if side==0 else -1.0
-		var shoulder = Vector3(s*.21,1.48,0)
+		var shoulder = Vector3(s*shoulder_x,1.48,0)
 		var offset: Vector3 = fist[side]-shoulder
-		var distance = clampf(offset.length(),.06,.475)
+		var distance = clampf(offset.length(),tightest,longest)
 		var direction = offset.normalized()
-		var along = (.25*.25-.23*.23+distance*distance)/(2*distance)
-		var height = sqrt(maxf(.0001,.25*.25-along*along))
+		var along = (upper_length*upper_length-lower_length*lower_length+distance*distance)/(2*distance)
+		var height = sqrt(maxf(.0001,upper_length*upper_length-along*along))
 		var pole = Vector3(s*.5,-1,0)
 		pole = (pole-direction*direction.dot(pole)).normalized()
 		var elbow = shoulder+direction*along+pole*height
