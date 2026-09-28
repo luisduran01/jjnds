@@ -57,12 +57,11 @@ var buffered = ""
 var buffer_life = 0.0
 var hits_received: Dictionary = {}
 var model: Node3D
-<<<<<<< HEAD
 var camera_target: Node3D
-=======
 var step_cooldown: float = 0.0
 var step_hold: float = 0.0
->>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449
+var step_velocity := Vector3.ZERO
+var step_duration := 0.2
 var is_stepping: bool = false
 var locomotion_blend: Vector2 = Vector2.ZERO
 @export var locomotion_blend_speed: float = 5.0
@@ -137,28 +136,21 @@ func _ready() -> void:
 	var visual = packed.instantiate()
 	model.add_child(visual)
 	skeleton = find_skeleton(visual)
-<<<<<<< HEAD
 	var player = visual.get_node_or_null("AnimationPlayer") as AnimationPlayer
 	var tree = visual.get_node_or_null("AnimationTree") as AnimationTree
 	if skeleton == null or player == null or tree == null:
 		push_error("Boxer model requires Skeleton3D, AnimationPlayer and AnimationTree")
 		return
 	tree.active = true
-	tree.set("parameters/UpperBody/blend_amount",0.0)
+	tree.set("parameters/UpperBody/blend_amount", 0.0)
 	var playback = tree.get("parameters/Action/playback") as AnimationNodeStateMachinePlayback
 	if playback == null:
 		push_error("Boxer AnimationTree is missing the Action state machine")
 		return
 	animation = {"player": player, "tree": tree, "playback": playback}
 	playback.start("guard", true)
-=======
-	# The body profile and the measured rig are resolved BEFORE the animation is
-	# built: the pose solver, the bone scale and the reach diagnostics all read
-	# the same arm geometry, so they can no longer disagree.
->>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449
 	body_profile=BodyProfile.from_stats(profile_value("height",180.0),profile_value("reach",182.0),profile_value("weight",147.0))
 	reach=ReachProfile.resolve(ReachProfile.measure(skeleton),body_profile.get("arm_scale",1.0),body_profile.get("height_scale",1.0))
-	animation = Animations.build(model,skeleton,reach)
 	apply_body_profile()
 	fatigue=Fatigue.new()
 	fatigue.configure(profile_value("stamina_max",100.0),profile_value("recovery",60.0))
@@ -341,12 +333,9 @@ func attack(punch: String) -> bool:
 		plan_punch_step(punch)
 	thrown += 1
 	defense = ""
-<<<<<<< HEAD
 	if not animation.is_empty():
-		animation.tree.set("parameters/UpperBody/blend_amount",1.0)
-=======
+		animation.tree.set("parameters/UpperBody/blend_amount", 1.0)
 	update_punch_ik()
->>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449
 	set_state(State.ATTACKING,0,punch)
 	return true
 
@@ -420,7 +409,6 @@ func _physics_process(delta: float) -> void:
 	if state==State.ATTACKING:
 		attack_time += delta*attack_scale
 		var d = Punches.DATA[current_punch]
-<<<<<<< HEAD
 		var action_clip: Animation = animation.player.get_animation(current_punch)
 		var clip_speed := action_clip.length/maxf(d[0],.001) if action_clip else 1.0
 		animation.tree.set("parameters/ActionSpeed/scale",attack_scale*clip_speed)
@@ -444,10 +432,6 @@ func _physics_process(delta: float) -> void:
 				punch_forward=punch_forward.normalized()
 				velocity.x+=punch_forward.x*punch_drive*drive_curve*delta
 				velocity.z+=punch_forward.z*punch_drive*drive_curve*delta
-		if attack_time>=d[0]:
-			recovery = .15 if not attack_connected else .02
-			animation.tree.set("parameters/UpperBody/blend_amount",0.0)
-=======
 		attack_progress = clampf(attack_time/maxf(.001,d[0]),0.0,1.0)
 		var drive_intensity = clampf(attack_scale*(0.55+0.45*fatigue.drive_factor()),0.35,1.2)
 		active_ragdoll.set_punch_drive(current_punch,attack_progress,drive_intensity)
@@ -458,7 +442,6 @@ func _physics_process(delta: float) -> void:
 			if not attack_connected:
 				spend_stamina(d[4]*.25,.8)
 			active_ragdoll.clear_drive()
->>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449
 			set_state(State.IDLE)
 			current_punch=""
 			if buffered!="":
@@ -468,23 +451,18 @@ func _physics_process(delta: float) -> void:
 	elif state in [State.DODGING,State.HURT,State.STUNNED,State.GET_UP] and state_time<=0:
 		defense=""
 		set_state(State.IDLE)
-<<<<<<< HEAD
-	if state!=State.ATTACKING: animation.tree.set("parameters/ActionSpeed/scale",1.0)
 	pivot_timer=maxf(0.0,pivot_timer-delta)
-=======
 	if state!=State.ATTACKING:
 		animation.tree.set("parameters/ActionSpeed/scale",1.0)
 		active_ragdoll.clear_drive()
 	# Blocking stamina: holding the guard burns energy even without absorbing.
 	if state==State.BLOCKING:
 		drain_stamina(delta*3.2)
->>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449
 	if state not in [State.KNOCKDOWN,State.KO,State.VICTORY,State.DEFEAT]:
 		var speed = lerpf(1.1,2.1,health/100.0)*lerpf(.65,1.0,stamina/100.0)
 		if state==State.ATTACKING: speed*=.48
 		if state==State.BLOCKING: speed*=.56
 		if state in [State.HURT,State.STUNNED,State.GET_UP]: speed*=.12
-<<<<<<< HEAD
 		var can_footwork = fighting and state in [State.IDLE, State.MOVING]
 
 		# Follow the actual local velocity. This preserves the forward/strafe clip
@@ -571,38 +549,6 @@ func _physics_process(delta: float) -> void:
 		if target_horizontal.length_squared()>.001:
 			last_move_direction=target_horizontal.normalized()
 		is_stepping = can_footwork and velocity.length_squared() > .025
-=======
-		
-		step_cooldown = maxf(0, step_cooldown - delta)
-		
-		var direction = global_basis*Vector3(move_input.x,0,-move_input.y)
-		
-		if is_stepping:
-			velocity.x = step_velocity.x
-			velocity.z = step_velocity.z
-			# The step MOVES for step_hold and then plants; the longer cooldown is
-			# the pause between steps. Holding the velocity for the whole cooldown
-			# turned footwork into a 1.3 m glide.
-			step_hold = maxf(0.0, step_hold - delta)
-			if step_hold <= 0.0:
-				is_stepping = false
-				# The foot plants where the step lands instead of decaying into a
-				# glide; the pause before the next step is what reads as footwork.
-				velocity.x = 0.0
-				velocity.z = 0.0
-		else:
-			if direction.length() > 0.1 and fighting and state in [State.IDLE, State.MOVING] and step_cooldown <= 0:
-				is_stepping = true
-				step_hold = step_duration
-				step_cooldown = step_duration + 0.15 # Pause between steps
-				step_velocity = direction * (speed * 1.15)
-				velocity.x = step_velocity.x
-				velocity.z = step_velocity.z
-			else:
-				var desired = direction*speed*0.3 if (fighting and state == State.ATTACKING) else Vector3.ZERO
-				velocity.x = move_toward(velocity.x,desired.x,delta*10)
-				velocity.z = move_toward(velocity.z,desired.z,delta*10)
->>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449
 				
 		velocity.y -= 9.8*delta
 		move_and_slide()
@@ -696,13 +642,8 @@ func update_hitboxes(delta: float) -> void:
 		var aim_error=(1.0-fatigue.accuracy_factor())*.055
 		point+=global_basis.x*sin(float(attack_id)*9.17+attack_time*31.0)*aim_error
 		fists[hand].global_position=point
-<<<<<<< HEAD
-		var effective: bool = false
-		if fighting and state==State.ATTACKING:
-=======
 		var effective=false
 		if fighting and state==State.ATTACKING and Punches.DATA.has(current_punch):
->>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449
 			var d=Punches.DATA[current_punch]
 			# The imported Mixamo actions have different lead-ins. The swept fist
 			# volume is the authoritative visual contact test, so keep the complete
@@ -730,18 +671,6 @@ func update_hitboxes(delta: float) -> void:
 				query.collide_with_bodies=false
 				for result in get_world_3d().direct_space_state.intersect_shape(query,8):
 					var area=result.collider
-<<<<<<< HEAD
-					if area.has_meta("fighter") and area.get_meta("fighter")!=self:
-						var victim=area.get_meta("fighter")
-						var contact_distance: float = point.distance_to(area.global_position)
-						var accuracy := clampf(1.0-(contact_distance/.55),.35,1.0)
-						var contact_position=old_fists[hand].lerp(point,float(step)/samples)
-						var contact={"position":contact_position,"velocity":(point-old_fists[hand])/maxf(delta,.001),"hand":hand}
-						if victim.receive_hit(self,current_punch,area.get_meta("zone"),fist_speed,accuracy,attack_id,contact):
-							attack_connected=true
-							break
-				if attack_connected: break
-=======
 					if not area.has_meta("fighter") or area.get_meta("fighter")==self: continue
 					var zone: String = area.get_meta("zone")
 					var contact_position=old_fists[hand].lerp(point,float(step)/samples)
@@ -755,7 +684,6 @@ func update_hitboxes(delta: float) -> void:
 				var contact={"position":chosen.position,"velocity":(point-old_fists[hand])/maxf(delta,.001),"hand":hand}
 				if chosen.victim.receive_hit(self,current_punch,chosen.zone,fist_speed,accuracy,attack_id,contact):
 					attack_connected=true
->>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449
 		old_fists[hand]=point
 
 func receive_hit(attacker: Node,punch: String,zone: String,speed: float,accuracy: float,id: int,contact: Dictionary={}) -> bool:

@@ -1,0 +1,51 @@
+[gd_scene format=3 uid="uid://bgn0e3usgnr6p"]
+
+[ext_resource type="PackedScene" uid="uid://dnb6x28cpoxuy" path="res://characters/3d/models/boxing.glb" id="1_model"]
+[ext_resource type="PackedScene" uid="uid://b61vi18bia37r" path="res://assets/sprites/animation_player.tscn" id="2_nbf2t"]
+[ext_resource type="AnimationLibrary" uid="uid://kdrblvli5wle" path="res://characters/3d/animations/boxer_library.res" id="3_c144l"]
+
+[sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_base"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_main"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_head"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_fist"]
+
+[node name="Boxer3D" type="CharacterBody3D" unique_id=2059284795]
+
+[node name="Model" type="Node3D" parent="." unique_id=1847897860]
+
+[node name="boxing" parent="Model" unique_id=199226299 instance=ExtResource("1_model")]
+
+[node name="AnimationPlayer" parent="." unique_id=162750193 instance=ExtResource("2_nbf2t")]
+libraries/boxer_library = ExtResource("3_c144l")
+
+[node name="AnimationTree" type="AnimationTree" parent="." unique_id=784806262]
+tree_root = SubResource("AnimationNodeStateMachine_base")
+anim_player = NodePath("../AnimationPlayer")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=623168816]
+shape = SubResource("CapsuleShape3D_main")
+
+[node name="HeadHitbox" type="Area3D" parent="." unique_id=870330912]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="HeadHitbox" unique_id=362213950]
+shape = SubResource("SphereShape3D_head")
+
+[node name="BodyHitbox" type="Area3D" parent="." unique_id=426342460]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BodyHitbox" unique_id=673003390]
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="LeftFistHitbox" type="Area3D" parent="." unique_id=2053037664]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="LeftFistHitbox" unique_id=25771327]
+shape = SubResource("SphereShape3D_fist")
+
+[node name="RightFistHitbox" type="Area3D" parent="." unique_id=319281992]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RightFistHitbox" unique_id=1287625989]
+shape = SubResource("SphereShape3D_fist")

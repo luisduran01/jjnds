@@ -1,0 +1,18 @@
+{
+	"average_fps": 142.642910969964,
+	"complete": true,
+	"elapsed_seconds": 64.2528711111021,
+	"enemy_hits": 22,
+	"enemy_throws": 30,
+	"phases": [
+		"ROUND_START",
+		"FIGHTING",
+		"ROUND_END",
+		"REST",
+		"FIGHT_END"
+	],
+	"player_hits": 18,
+	"player_throws": 30,
+	"result": "VEGA GANA\nDECISIÓN · 28 — 29",
+	"round": 3
+}

@@ -4,19 +4,6 @@ const Punches = preload("res://boxing/combat/punches.gd")
 const ReachProfile = preload("res://boxing/characters/reach_profile.gd")
 const EXTRA = ["idle","guard","forward","backward","left","right","pivot_left","pivot_right","block_high","block_body","dodge_left","dodge_right","slip","duck","weave","hurt_head","hurt_body","stagger","knockdown","fall","get_up","ko","victory","defeat"]
 
-<<<<<<< HEAD
-static func d(degrees: float) -> float:
-	return deg_to_rad(degrees)
-
-static func q_axis(axis: Vector3, angle: float) -> Quaternion:
-	return Quaternion(axis.normalized(),angle)
-
-static func gait_legs(input: Vector2, phase: float, amount: float) -> Dictionary:
-	var swing=sin(phase*TAU)*amount*d(18.0)
-	return {"LeftThigh":q_axis(Vector3.RIGHT,swing),"RightThigh":q_axis(Vector3.RIGHT,-swing),"LeftShin":q_axis(Vector3.RIGHT,-swing*.55),"RightShin":q_axis(Vector3.RIGHT,swing*.55)}
-
-static func build(model: Node3D, skeleton: Skeleton3D) -> Dictionary:
-=======
 # Fallback geometry when no measured reach is supplied; keeps the builder usable
 # on its own while the fighter always passes the resolved rig numbers.
 const DEFAULT_REACH := {
@@ -25,7 +12,6 @@ const DEFAULT_REACH := {
 
 static func build(model: Node3D, skeleton: Skeleton3D, reach: Dictionary = {}) -> Dictionary:
 	var geometry := reach if not reach.is_empty() else DEFAULT_REACH
->>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449
 	var player = AnimationPlayer.new()
 	player.name = "AnimationPlayer"
 	model.add_child(player)
@@ -135,7 +121,6 @@ static func pose_for(clip: String,t: float,geometry: Dictionary = {}) -> Diction
 			torso.y = -sign_side * extension * .34
 			pose["Hips"] = Quaternion.from_euler(Vector3(0.0, -sign_side * extension * .22, 0.0))
 		if d[6] == "upper":
-<<<<<<< HEAD
 			# Uppercuts now begin below the guard and rise through the target,
 			# instead of tracing the same horizontal line as a straight.
 			fist[side].y = 1.20
@@ -160,10 +145,6 @@ static func pose_for(clip: String,t: float,geometry: Dictionary = {}) -> Diction
 				pose["Hips"] = Quaternion.from_euler(Vector3(-extension * .07, -extension * .20, 0.0))
 				pose["RightThigh"] = Quaternion.from_euler(Vector3(extension * .17,0,0))
 				pose["RightShin"] = Quaternion.from_euler(Vector3(-extension * .10,0,0))
-=======
-			fist[side].y -= sin(t*PI)*.28
-			end.y = 1.7
-			end.z = .48
 		# Each punch may only spend the share of the arm its mechanics allow, so a
 		# hook cannot reach like a cross and an uppercut cannot reach like a jab.
 		budget = ReachProfile.extension_for(measured,clip)
@@ -184,7 +165,6 @@ static func pose_for(clip: String,t: float,geometry: Dictionary = {}) -> Diction
 		# rise: how much the punch climbs (uppercut) or drops (body shot). Scaled
 		# by the target height, which is what makes a body hook arrive low.
 		end.y += float(chain["rise"])*0.22*extension
->>>>>>> 7ad7f168236b6a7959ebed9c467b837a461db449
 		fist[side] = fist[side].lerp(end,extension)
 	elif clip == "block_high":
 		fist = [Vector3(.12,1.68,.28),Vector3(-.12,1.68,.28)]

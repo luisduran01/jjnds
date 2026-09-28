@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="BoxerData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/boxer/boxer_data.gd" id="1_bd1"]
+
+[resource]
+script = ExtResource("1_bd1")
+boxer_name = "Marcus Stone"
+nickname = "The Rock"
+country = "USA"
+age = 24
+height = 182.0
+reach = 185.0
+weight = 160.0
+overall = 70
+health = 110
+stamina_max = 95.0
+power = 78
+speed = 60
+defense = 65
+chin = 70
+body_resistance = 68
+accuracy = 62
+movement = 55
+recovery = 65
+jab_power = 12
+cross_power = 25
+hook_power = 30
+uppercut_power = 35
+body_shot_power = 18
+jab_cost = 9.0
+cross_cost = 16.0
+hook_cost = 22.0
+uppercut_cost = 28.0
+body_shot_cost = 14.0
+jab_cooldown = 0.28
+cross_cooldown = 0.5
+hook_cooldown = 0.55
+uppercut_cooldown = 0.65
+body_shot_cooldown = 0.45
+stamina_regen_rate = 18.0
+ai_style = 1

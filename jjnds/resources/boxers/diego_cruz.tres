@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="BoxerData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/boxer/boxer_data.gd" id="1_bd1"]
+
+[resource]
+script = ExtResource("1_bd1")
+boxer_name = "Diego Cruz"
+nickname = "El Matador"
+country = "Mexico"
+age = 22
+height = 178.0
+reach = 180.0
+weight = 147.0
+overall = 73
+health = 100
+stamina_max = 110.0
+power = 70
+speed = 75
+defense = 75
+chin = 65
+body_resistance = 70
+accuracy = 78
+movement = 75
+recovery = 70
+jab_power = 11
+cross_power = 21
+hook_power = 27
+uppercut_power = 31
+body_shot_power = 17
+jab_cost = 7.0
+cross_cost = 14.0
+hook_cost = 19.0
+uppercut_cost = 24.0
+body_shot_cost = 11.0
+jab_cooldown = 0.22
+cross_cooldown = 0.4
+hook_cooldown = 0.45
+uppercut_cooldown = 0.55
+body_shot_cooldown = 0.35
+stamina_regen_rate = 25.0
+ai_style = 2

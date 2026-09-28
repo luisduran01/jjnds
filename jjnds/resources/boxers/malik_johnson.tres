@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="BoxerData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/boxer/boxer_data.gd" id="1_bd1"]
+
+[resource]
+script = ExtResource("1_bd1")
+boxer_name = "Malik Johnson"
+nickname = "The Beast"
+country = "USA"
+age = 25
+height = 180.0
+reach = 183.0
+weight = 155.0
+overall = 79
+health = 120
+stamina_max = 110.0
+power = 85
+speed = 75
+defense = 65
+chin = 80
+body_resistance = 75
+accuracy = 70
+movement = 70
+recovery = 75
+jab_power = 14
+cross_power = 28
+hook_power = 32
+uppercut_power = 38
+body_shot_power = 20
+jab_cost = 10.0
+cross_cost = 18.0
+hook_cost = 25.0
+uppercut_cost = 30.0
+body_shot_cost = 16.0
+jab_cooldown = 0.26
+cross_cooldown = 0.48
+hook_cooldown = 0.55
+uppercut_cooldown = 0.65
+body_shot_cooldown = 0.45
+stamina_regen_rate = 19.0
+ai_style = 3
