@@ -9,6 +9,7 @@ var max_stamina: float = 100.0
 
 @onready var anim_tree = $AnimationTree
 @onready var playback = anim_tree.get("parameters/playback") if anim_tree else null
+@onready var model: Node3D = $Model
 
 var is_attacking: bool = false
 var is_blocking: bool = false
@@ -22,6 +23,14 @@ var step_duration: float = 0.2
 var is_stepping: bool = false
 var step_velocity: Vector3 = Vector3.ZERO
 var is_dodging: bool = false
+var move_input := Vector2.ZERO
+var footwork_velocity := Vector3.ZERO
+var punch_kind := ""
+var punch_clock := 0.0
+var punch_length := 0.0
+var body_roll := 0.0
+var body_pitch := 0.0
+var body_shift := Vector3.ZERO
 
 signal health_changed(new_val)
 signal stamina_changed(new_val)
@@ -54,8 +63,8 @@ var stamina_regen_rate: float = 15.0
 func _physics_process(delta: float) -> void:
 	if is_hurt: return
 	
-	_handle_movement(delta)
 	_handle_rotation(delta)
+	_handle_movement(delta)
 	
 	if is_player:
 		_handle_input()
@@ -79,6 +88,7 @@ func _physics_process(delta: float) -> void:
 		velocity.y -= 9.8 * delta
 		
 	move_and_slide()
+	_update_boxer_pose(delta)
 
 func _handle_movement(delta: float) -> void:
 	if step_cooldown > 0:
@@ -88,36 +98,25 @@ func _handle_movement(delta: float) -> void:
 		velocity = step_velocity
 		return
 		
-	if is_stepping:
-		velocity = step_velocity
-		if step_cooldown <= 0.0:
-			is_stepping = false
-		return
-
 	var input_dir = Vector2.ZERO
 	if is_player:
-		input_dir = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+		input_dir = Input.get_vector("box_left", "box_right", "box_forward", "box_back")
+	move_input = input_dir
 		
 	var current_move_speed = move_speed
 	if is_exhausted:
 		current_move_speed *= 0.6 # Move slower when exhausted
 		
-	if input_dir.length() > 0.1 and not is_attacking and step_cooldown <= 0:
-		if is_exhausted and stamina < 5.0:
-			# Can't dash if completely drained, just walk slowly
-			var direction = (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
-			velocity.x = direction.x * current_move_speed
-			velocity.z = direction.z * current_move_speed
-			if playback: playback.travel("walk")
-		else:
-			# Initiate a step/dash
-			var direction = (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
-			is_stepping = true
-			step_cooldown = step_duration + 0.15 # Slightly longer cooldown
-			step_velocity = direction * (current_move_speed * 1.5)
-			stamina = max(0, stamina - 2.0)
-			stamina_changed.emit(stamina)
-			if playback: playback.travel("walk")
+	if input_dir.length() > 0.1 and not is_attacking:
+		# The fighter always faces the rival, so local X circles and local Z closes/ranges.
+		var local_direction = Vector3(input_dir.x, 0, input_dir.y).normalized()
+		var direction = (global_basis * local_direction).normalized()
+		var target_speed = current_move_speed * (0.86 if absf(input_dir.x) > 0.1 else 1.0)
+		footwork_velocity = footwork_velocity.lerp(direction * target_speed, minf(1.0, delta * 9.0))
+		velocity.x = footwork_velocity.x
+		velocity.z = footwork_velocity.z
+		is_stepping = true
+		if playback: playback.travel("walk")
 	else:
 		if is_attacking:
 			# Allow slight movement during attacks if pressing direction
@@ -125,8 +124,10 @@ func _handle_movement(delta: float) -> void:
 			velocity.x = direction.x * (move_speed * 0.3)
 			velocity.z = direction.z * (move_speed * 0.3)
 		else:
-			velocity.x = move_toward(velocity.x, 0, move_speed)
-			velocity.z = move_toward(velocity.z, 0, move_speed)
+			footwork_velocity = footwork_velocity.move_toward(Vector3.ZERO, delta * move_speed * 7.0)
+			velocity.x = footwork_velocity.x
+			velocity.z = footwork_velocity.z
+			is_stepping = footwork_velocity.length() > 0.08
 			if playback and not is_blocking: 
 				playback.travel("idle")
 
@@ -140,14 +141,16 @@ func _handle_rotation(delta: float) -> void:
 			global_transform = global_transform.interpolate_with(target_transform, rotation_speed * delta)
 
 func _handle_input() -> void:
-	if is_attacking or is_blocking or is_dodging or is_stepping: return
+	if is_attacking or is_blocking or is_dodging: return
 	
-	if Input.is_action_just_pressed("ui_accept"):
+	if Input.is_action_just_pressed("box_jab"):
 		punch("jab")
+	elif Input.is_action_just_pressed("box_cross"):
+		punch("cross")
 		
 	# Placeholder dodge input (e.g., right click or shift)
 	if Input.is_action_just_pressed("bloquear"): # You can change this to a specific dodge action
-		if Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down").length() > 0.1:
+		if Input.get_vector("box_left", "box_right", "box_forward", "box_back").length() > 0.1:
 			dodge()
 
 func dodge() -> void:
@@ -155,7 +158,7 @@ func dodge() -> void:
 	stamina -= 15
 	stamina_changed.emit(stamina)
 	is_dodging = true
-	var input_dir = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+	var input_dir = Input.get_vector("box_left", "box_right", "box_forward", "box_back")
 	var direction = (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
 	step_velocity = direction * (move_speed * 2.0)
 	step_cooldown = 0.35
@@ -179,12 +182,51 @@ func punch(type: String) -> void:
 	if playback:
 		playback.travel(type)
 	
-	var attack_speed = 0.25
+	punch_kind = type
+	punch_clock = 0.0
+	punch_length = 0.42 if type == "jab" else 0.58
+	var attack_speed = punch_length
 	if is_exhausted:
 		attack_speed = 0.55 # Much slower when exhausted, guard drops
 	
 	await get_tree().create_timer(attack_speed).timeout
 	is_attacking = false
+	punch_kind = ""
+
+func _update_boxer_pose(delta: float) -> void:
+	# This is intentionally applied to the Model used by the live fight scene,
+	# after movement. It gives the imported boxer visible weight, guard and punch
+	# commitment even when a clip is missing from the scene AnimationTree.
+	if not model:
+		return
+	var t = Time.get_ticks_msec() * 0.001
+	var desired_shift = Vector3(0, sin(t * 2.1) * 0.018, 0)
+	var desired_pitch = sin(t * 2.1) * 0.022
+	var desired_roll = sin(t * 1.35) * 0.028
+	if is_stepping:
+		var stride = sin(t * 9.0) * 0.026
+		desired_shift.y += absf(stride)
+		desired_shift.z += stride * 0.55
+		desired_roll += move_input.x * 0.055
+	if is_attacking and punch_length > 0.0:
+		punch_clock = minf(punch_length, punch_clock + delta)
+		var phase = punch_clock / punch_length
+		var extension = sin(phase * PI)
+		if punch_kind == "jab":
+			desired_shift.z += -extension * 0.16
+			desired_shift.x += extension * 0.035
+			desired_pitch += extension * 0.075
+			desired_roll += extension * 0.055
+		else: # cross: more rear-leg drive, hip turn and a longer recovery
+			desired_shift.z += -extension * 0.24
+			desired_shift.x += -extension * 0.075
+			desired_pitch += extension * 0.11
+			desired_roll -= extension * 0.18
+	body_shift = body_shift.lerp(desired_shift, minf(1.0, delta * 14.0))
+	body_pitch = lerpf(body_pitch, desired_pitch, minf(1.0, delta * 12.0))
+	body_roll = lerpf(body_roll, desired_roll, minf(1.0, delta * 12.0))
+	model.position = body_shift
+	model.rotation = Vector3(body_pitch, 0.0, body_roll)
 
 func take_damage(amount: float, is_head: bool = true) -> void:
 	if is_dodging:

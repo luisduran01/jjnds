@@ -7,7 +7,7 @@ enum FightRange { LONG, MID, SHORT, CLINCH }
 const LONG_THRESHOLD   := 1.55
 const MID_THRESHOLD    := 1.0
 const SHORT_THRESHOLD  := 0.65
-const CLINCH_THRESHOLD := 0.38
+const CLINCH_THRESHOLD := 0.56 # Capsule bodies cannot physically reach 0.38 m.
 
 # Estado del clinch
 var in_clinch         := false

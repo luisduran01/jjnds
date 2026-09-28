@@ -1,0 +1,48 @@
+{
+	"avg_damage": 4.25251723289858,
+	"avg_fps": 142.281852315394,
+	"blocked": 9,
+	"body_hits": {
+		"enemy": 5,
+		"player": 6
+	},
+	"complete": true,
+	"counters": 16,
+	"elapsed": 55.2737426666601,
+	"enemy_lands": 17,
+	"enemy_throws": 24,
+	"head_hits": {
+		"enemy": 12,
+		"player": 16
+	},
+	"max_fatigue": {
+		"enemy": 53.4202031643029,
+		"player": 85.590355197098
+	},
+	"max_reach_distance": 0.773653149604797,
+	"max_reaction_deg": 16.6352313745314,
+	"min_stamina": {
+		"enemy": 65.2687845536567,
+		"player": 29.4613983020381
+	},
+	"phases": [
+		"ROUND_START",
+		"FIGHTING",
+		"ROUND_END",
+		"REST",
+		"FIGHT_END"
+	],
+	"player_lands": 22,
+	"player_throws": 28,
+	"punches": [
+		"jab",
+		"body_hook",
+		"right_uppercut",
+		"left_hook",
+		"cross",
+		"body_cross",
+		"body_jab"
+	],
+	"result": "ALONSO GANA\nDECISIÓN · 29 — 28",
+	"round": 3
+}

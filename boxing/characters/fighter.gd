@@ -8,7 +8,6 @@ signal medical_risk(fighter)
 
 enum State { IDLE, MOVING, ATTACKING, BLOCKING, DODGING, HURT, STUNNED, KNOCKDOWN, GET_UP, KO, VICTORY, DEFEAT }
 const Punches = preload("res://boxing/combat/punches.gd")
-const Animations = preload("res://boxing/characters/animation_factory.gd")
 const BodyProfile = preload("res://boxing/characters/body_profile.gd")
 const Fatigue = preload("res://boxing/combat/fatigue_model.gd")
 const ActiveRagdoll = preload("res://boxing/characters/active_ragdoll.gd")
@@ -51,10 +50,28 @@ var buffered = ""
 var buffer_life = 0.0
 var hits_received: Dictionary = {}
 var model: Node3D
-var step_cooldown: float = 0.0
+var camera_target: Node3D
 var is_stepping: bool = false
-var step_velocity: Vector3 = Vector3.ZERO
-var step_duration: float = 0.2
+var locomotion_blend: Vector2 = Vector2.ZERO
+@export var locomotion_blend_speed: float = 5.0
+@export var preferred_fight_distance: float = 1.45
+@export var distance_deadzone: float = 0.20
+@export var circle_speed_multiplier: float = 0.92
+@export var close_retreat_bonus: float = 1.12
+@export var far_approach_bonus: float = 1.08
+@export var pivot_distance: float = 1.65
+@export var pivot_boost: float = 1.22
+@export var pivot_duration: float = 0.16
+var pivot_timer: float = 0.0
+var pivot_direction: float = 0.0
+@export var acceleration_rate: float = 9.0
+@export var braking_rate: float = 13.0
+@export var direction_change_rate: float = 6.5
+var last_move_direction: Vector3 = Vector3.ZERO
+@export var punch_movement_strength: float = 0.38
+@export var cross_movement_strength: float = 0.48
+@export var hook_movement_strength: float = 0.20
+@export var uppercut_movement_strength: float = 0.16
 var skeleton: Skeleton3D
 var animation: Dictionary
 var fist_points: Array[Node3D] = []
@@ -91,14 +108,32 @@ func _ready() -> void:
 	model = Node3D.new()
 	model.name = "Model"
 	add_child(model)
-	var packed = load("res://boxing/characters/boxer_rigged.glb") as PackedScene
+	camera_target = Node3D.new()
+	camera_target.name = "CameraTarget"
+	camera_target.position = Vector3(0, 1.15, 0)
+	add_child(camera_target)
+	# The fighter consumes the authored scene: its clips and BlendSpace are baked
+	# assets, never tracks built at runtime by Fighter.
+	var packed = load("res://boxing/characters/boxer_model.tscn") as PackedScene
 	if packed == null:
-		push_error("Rigged character was not imported")
+		push_error("Boxer model scene was not imported")
 		return
 	var visual = packed.instantiate()
 	model.add_child(visual)
 	skeleton = find_skeleton(visual)
-	animation = Animations.build(model,skeleton)
+	var player = visual.get_node_or_null("AnimationPlayer") as AnimationPlayer
+	var tree = visual.get_node_or_null("AnimationTree") as AnimationTree
+	if skeleton == null or player == null or tree == null:
+		push_error("Boxer model requires Skeleton3D, AnimationPlayer and AnimationTree")
+		return
+	tree.active = true
+	tree.set("parameters/UpperBody/blend_amount",0.0)
+	var playback = tree.get("parameters/Action/playback") as AnimationNodeStateMachinePlayback
+	if playback == null:
+		push_error("Boxer AnimationTree is missing the Action state machine")
+		return
+	animation = {"player": player, "tree": tree, "playback": playback}
+	playback.start("guard", true)
 	body_profile=BodyProfile.from_stats(profile_value("height",180.0),profile_value("reach",182.0),profile_value("weight",147.0))
 	apply_body_profile()
 	fatigue=Fatigue.new()
@@ -134,6 +169,35 @@ func _ready() -> void:
 		skin_material.set_shader_parameter("damage_map",damage_accumulator.texture)
 		skin_material.set_shader_parameter("damage_strength",1.0)
 		mesh.material_override=skin_material
+	if not is_player:
+		_add_opponent_identity()
+
+func _add_opponent_identity() -> void:
+	# The rival shares the combat rig but no longer reads as the same boxer.
+	var head_bone=skeleton.find_bone("Head")
+	if head_bone < 0: return
+	var attachment=BoneAttachment3D.new()
+	attachment.bone_name="Head"
+	skeleton.add_child(attachment)
+	var hair=MeshInstance3D.new()
+	var cap=SphereMesh.new()
+	cap.radius=.15; cap.height=.13; cap.radial_segments=12
+	hair.mesh=cap; hair.position=Vector3(0,.13,0); hair.scale=Vector3(1.05,.55,1.05)
+	hair.material_override=_kit_material(Color("15120f"),.82)
+	attachment.add_child(hair)
+	var beard=MeshInstance3D.new()
+	var beard_mesh=BoxMesh.new()
+	beard_mesh.size=Vector3(.12,.10,.035)
+	beard.mesh=beard_mesh; beard.position=Vector3(0,-.10,.135)
+	beard.material_override=_kit_material(Color("211712"),.9)
+	attachment.add_child(beard)
+
+func _kit_material(color: Color, roughness: float, metallic: float=0.0) -> StandardMaterial3D:
+	var mat=StandardMaterial3D.new()
+	mat.albedo_color=color
+	mat.roughness=roughness
+	mat.metallic=metallic
+	return mat
 
 func profile_value(field: String, fallback: float) -> float:
 	if boxer_data and field in boxer_data: return float(boxer_data.get(field))
@@ -190,6 +254,8 @@ func set_state(next: State,duration: float=0.0,clip: String="") -> void:
 		combat_state_machine.request(next,duration,StringName(clip))
 	if state==State.ATTACKING and next!=State.ATTACKING:
 		current_punch=""
+		if not animation.is_empty():
+			animation.tree.set("parameters/UpperBody/blend_amount",0.0)
 		if next!=State.IDLE:
 			buffered=""
 			buffer_life=0
@@ -231,6 +297,8 @@ func attack(punch: String) -> bool:
 		last_ik_target=opponent.global_position+Vector3(0,1.18 if punch.begins_with("body") else 1.66,0)
 	thrown += 1
 	defense = ""
+	if not animation.is_empty():
+		animation.tree.set("parameters/UpperBody/blend_amount",1.0)
 	set_state(State.ATTACKING,0,punch)
 	return true
 
@@ -280,10 +348,33 @@ func _physics_process(delta: float) -> void:
 			rotation.y = lerp_angle(rotation.y,atan2(flat.x,flat.z),minf(1,delta*9))
 	if state==State.ATTACKING:
 		attack_time += delta*attack_scale
-		animation.tree.set("parameters/ActionSpeed/scale",attack_scale)
 		var d = Punches.DATA[current_punch]
+		var action_clip: Animation = animation.player.get_animation(current_punch)
+		var clip_speed := action_clip.length/maxf(d[0],.001) if action_clip else 1.0
+		animation.tree.set("parameters/ActionSpeed/scale",attack_scale*clip_speed)
+		# Transfer of body weight uses the punch's early drive, then fades during
+		# recovery. Straight punches advance more than hooks and uppercuts.
+		var punch_progress := clampf(attack_time/maxf(d[0],.001),0.0,1.0)
+		var drive_curve := sin(punch_progress*PI)
+		var punch_drive := 0.0
+		if current_punch in ["jab","body_jab"]:
+			punch_drive=punch_movement_strength
+		elif current_punch in ["cross","body_cross"]:
+			punch_drive=cross_movement_strength
+		elif d[6]=="hook":
+			punch_drive=hook_movement_strength
+		elif d[6]=="upper":
+			punch_drive=uppercut_movement_strength
+		if punch_drive>.0 and opponent:
+			var punch_forward := opponent.global_position-global_position
+			punch_forward.y=0.0
+			if punch_forward.length_squared()>.001:
+				punch_forward=punch_forward.normalized()
+				velocity.x+=punch_forward.x*punch_drive*drive_curve*delta
+				velocity.z+=punch_forward.z*punch_drive*drive_curve*delta
 		if attack_time>=d[0]:
 			recovery = .15 if not attack_connected else .02
+			animation.tree.set("parameters/UpperBody/blend_amount",0.0)
 			set_state(State.IDLE)
 			current_punch=""
 			if buffered!="":
@@ -294,32 +385,98 @@ func _physics_process(delta: float) -> void:
 		defense=""
 		set_state(State.IDLE)
 	if state!=State.ATTACKING: animation.tree.set("parameters/ActionSpeed/scale",1.0)
+	pivot_timer=maxf(0.0,pivot_timer-delta)
 	if state not in [State.KNOCKDOWN,State.KO,State.VICTORY,State.DEFEAT]:
 		var speed = lerpf(1.1,2.1,health/100.0)*lerpf(.65,1.0,stamina/100.0)
 		if state==State.ATTACKING: speed*=.48
 		if state==State.BLOCKING: speed*=.56
 		if state in [State.HURT,State.STUNNED,State.GET_UP]: speed*=.12
-		
-		step_cooldown = maxf(0, step_cooldown - delta)
-		
-		var direction = global_basis*Vector3(move_input.x,0,-move_input.y)
-		
-		if is_stepping:
-			velocity.x = step_velocity.x
-			velocity.z = step_velocity.z
-			if step_cooldown <= 0.0:
-				is_stepping = false
+		var can_footwork = fighting and state in [State.IDLE, State.MOVING]
+
+		# Follow the actual local velocity. This preserves the forward/strafe clip
+		# during physical deceleration instead of snapping toward Idle on key-up.
+		var target_blend := Vector2.ZERO
+		if fighting and (can_footwork or state==State.ATTACKING) and speed>.01:
+			var local_velocity := global_basis.inverse()*Vector3(velocity.x,0.0,velocity.z)
+			target_blend=Vector2(local_velocity.x/speed,local_velocity.z/speed)
+			target_blend.x=clampf(target_blend.x,-1.0,1.0)
+			target_blend.y=clampf(target_blend.y,-1.0,1.0)
+		var blend_weight := 1.0-exp(-locomotion_blend_speed*delta)
+		locomotion_blend = locomotion_blend.lerp(target_blend,blend_weight)
+		if not animation.is_empty():
+			animation.tree.set("parameters/Locomotion/blend_position",locomotion_blend)
+			var horizontal_speed := Vector2(velocity.x,velocity.z).length()
+			var locomotion_speed_scale := 1.0
+			if horizontal_speed>.05:
+				locomotion_speed_scale=clampf(horizontal_speed/1.6,.75,1.30)
+			animation.tree.set("parameters/LocomotionSpeed/scale",locomotion_speed_scale)
+
+		var direction := Vector3.ZERO
+		if opponent:
+			var to_opponent := opponent.global_position-global_position
+			to_opponent.y=0.0
+			if to_opponent.length_squared()>.001:
+				var forward := to_opponent.normalized()
+				var right := Vector3.UP.cross(forward).normalized()
+				# Input.get_vector returns -1 for box_forward, so negate Y to
+				# make W approach and S retreat in the opponent-relative frame.
+				direction=right*move_input.x+forward*(-move_input.y)
 		else:
-			if direction.length() > 0.1 and fighting and state in [State.IDLE, State.MOVING] and step_cooldown <= 0:
-				is_stepping = true
-				step_cooldown = step_duration + 0.15 # Pause between steps
-				step_velocity = direction * (speed * 1.8)
-				velocity.x = step_velocity.x
-				velocity.z = step_velocity.z
-			else:
-				var desired = direction*speed*0.3 if (fighting and state == State.ATTACKING) else Vector3.ZERO
-				velocity.x = move_toward(velocity.x,desired.x,delta*10)
-				velocity.z = move_toward(velocity.z,desired.z,delta*10)
+			direction=global_basis*Vector3(move_input.x,0.0,-move_input.y)
+		if direction.length_squared()>.001:
+			direction=direction.normalized()
+		var distance_to_opponent := preferred_fight_distance
+		if opponent:
+			var separation := opponent.global_position-global_position
+			separation.y=0.0
+			distance_to_opponent=separation.length()
+		# Exit on an angle: S+A/S+D while close to the opponent.
+		if can_footwork and opponent:
+			var wants_retreat: bool = move_input.y>.35
+			var wants_angle: bool = abs(move_input.x)>.35
+			if wants_retreat and wants_angle and distance_to_opponent<=pivot_distance and pivot_timer<=0.0:
+				pivot_direction=sign(move_input.x)
+				pivot_timer=pivot_duration
+		var movement_multiplier := 1.0
+		if abs(move_input.x)>abs(move_input.y):
+			movement_multiplier=circle_speed_multiplier
+		# W maps to -Y (approach) and S maps to +Y (retreat).
+		if distance_to_opponent<preferred_fight_distance-distance_deadzone:
+			if move_input.y>.1:
+				movement_multiplier*=close_retreat_bonus
+		elif distance_to_opponent>preferred_fight_distance+distance_deadzone:
+			if move_input.y<-.1:
+				movement_multiplier*=far_approach_bonus
+		if opponent and distance_to_opponent<.72 and move_input.y<-.1:
+			movement_multiplier*=.35
+		var desired := Vector3.ZERO
+		if direction.length()>.1 and can_footwork:
+			desired=direction*speed*movement_multiplier
+		elif state==State.ATTACKING:
+			desired=direction*speed*.30
+		if pivot_timer>0.0 and opponent:
+			var pivot_to_opponent := opponent.global_position-global_position
+			pivot_to_opponent.y=0.0
+			if pivot_to_opponent.length_squared()>.001:
+				var fight_right := Vector3.UP.cross(pivot_to_opponent.normalized()).normalized()
+				desired+=fight_right*pivot_direction*speed*pivot_boost
+
+		var current_horizontal := Vector3(velocity.x,0.0,velocity.z)
+		var target_horizontal := Vector3(desired.x,0.0,desired.z)
+		var movement_rate := acceleration_rate
+		if target_horizontal.length_squared()<.001:
+			movement_rate=braking_rate
+		elif current_horizontal.length_squared()>.01:
+			var current_dir := current_horizontal.normalized()
+			var target_dir := target_horizontal.normalized()
+			if current_dir.dot(target_dir)<.25:
+				movement_rate=direction_change_rate
+		var new_horizontal := current_horizontal.move_toward(target_horizontal,speed*movement_rate*delta)
+		velocity.x=new_horizontal.x
+		velocity.z=new_horizontal.z
+		if target_horizontal.length_squared()>.001:
+			last_move_direction=target_horizontal.normalized()
+		is_stepping = can_footwork and velocity.length_squared() > .025
 				
 		velocity.y -= 9.8*delta
 		move_and_slide()
@@ -327,7 +484,11 @@ func _physics_process(delta: float) -> void:
 			state = State.MOVING if is_stepping else State.IDLE
 	else:
 		velocity=Vector3.ZERO
-	animation.tree.set("parameters/Footwork/blend_position",move_input if fighting else Vector2.ZERO)
+		locomotion_blend=locomotion_blend.lerp(Vector2.ZERO,1.0-exp(-locomotion_blend_speed*delta))
+		if not animation.is_empty():
+			animation.tree.set("parameters/Locomotion/blend_position",locomotion_blend)
+	if camera_target:
+		camera_target.global_position = global_position + Vector3(0, 1.15, 0)
 	var down = state in [State.KNOCKDOWN,State.KO,State.DEFEAT]
 	var target_roll = -1.5 if down else 0.0
 	model.rotation.x = lerp_angle(model.rotation.x,target_roll,minf(1,delta*5))
@@ -386,10 +547,15 @@ func update_hitboxes(delta: float) -> void:
 		var aim_error=(1.0-fatigue.accuracy_factor())*.055
 		point+=global_basis.x*sin(float(attack_id)*9.17+attack_time*31.0)*aim_error
 		fists[hand].global_position=point
-		var effective=false
+		var effective: bool = false
 		if fighting and state==State.ATTACKING:
 			var d=Punches.DATA[current_punch]
-			effective=hand==d[5] and attack_time>=d[1] and attack_time<=d[2] and not attack_connected
+			# The imported Mixamo actions have different lead-ins. The swept fist
+			# volume is the authoritative visual contact test, so keep the complete
+			# action available instead of retaining timing windows from old clips.
+			var active_start: float=0.0
+			var active_end: float=d[0]
+			effective=fighting and state==State.ATTACKING and hand==d[5] and attack_time>=active_start and attack_time<=active_end and not attack_connected
 		if effective:
 			var distance=point.distance_to(old_fists[hand])
 			fist_speed=clampf(distance/maxf(delta,.001)/3.0,.65,1.25)
@@ -406,7 +572,8 @@ func update_hitboxes(delta: float) -> void:
 					var area=result.collider
 					if area.has_meta("fighter") and area.get_meta("fighter")!=self:
 						var victim=area.get_meta("fighter")
-						var accuracy=clampf(1.0-point.distance_to(area.global_position),.6,1.0)
+						var contact_distance: float = point.distance_to(area.global_position)
+						var accuracy := clampf(1.0-(contact_distance/.55),.35,1.0)
 						var contact_position=old_fists[hand].lerp(point,float(step)/samples)
 						var contact={"position":contact_position,"velocity":(point-old_fists[hand])/maxf(delta,.001),"hand":hand}
 						if victim.receive_hit(self,current_punch,area.get_meta("zone"),fist_speed,accuracy,attack_id,contact):
@@ -427,7 +594,9 @@ func receive_hit(attacker: Node,punch: String,zone: String,speed: float,accuracy
 	# Golpes parcialmente conectados: rozar, impactar guante, conexión parcial
 	var glance_factor = 1.0
 	if accuracy < 0.72:
-		glance_factor = lerpf(0.35, 0.85, (accuracy - 0.6) / 0.12)
+		# Swept contacts can have accuracy below 0.6. Clamp the interpolation
+		# weight so a grazing hit reduces damage instead of healing the victim.
+		glance_factor = lerpf(0.35, 0.85, clampf((accuracy - 0.6) / 0.12, 0.0, 1.0))
 	var amount=Punches.damage(base,attacker.attack_stamina,speed,accuracy,counter,zone=="body",blocked)
 	amount *= glance_factor
 	amount*=attacker.fatigue.damage_factor()

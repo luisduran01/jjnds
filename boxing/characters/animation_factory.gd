@@ -3,6 +3,16 @@ extends RefCounted
 const Punches = preload("res://boxing/combat/punches.gd")
 const EXTRA = ["idle","guard","forward","backward","left","right","pivot_left","pivot_right","block_high","block_body","dodge_left","dodge_right","slip","duck","weave","hurt_head","hurt_body","stagger","knockdown","fall","get_up","ko","victory","defeat"]
 
+static func d(degrees: float) -> float:
+	return deg_to_rad(degrees)
+
+static func q_axis(axis: Vector3, angle: float) -> Quaternion:
+	return Quaternion(axis.normalized(),angle)
+
+static func gait_legs(input: Vector2, phase: float, amount: float) -> Dictionary:
+	var swing=sin(phase*TAU)*amount*d(18.0)
+	return {"LeftThigh":q_axis(Vector3.RIGHT,swing),"RightThigh":q_axis(Vector3.RIGHT,-swing),"LeftShin":q_axis(Vector3.RIGHT,-swing*.55),"RightShin":q_axis(Vector3.RIGHT,swing*.55)}
+
 static func build(model: Node3D, skeleton: Skeleton3D) -> Dictionary:
 	var player = AnimationPlayer.new()
 	player.name = "AnimationPlayer"
@@ -99,10 +109,33 @@ static func pose_for(clip: String,t: float) -> Dictionary:
 		if d[6] == "hook":
 			end.x = -sign_side*.12
 			fist[side].x += sign_side*sin(t*PI)*.18
+			torso.y = -sign_side * extension * .34
+			pose["Hips"] = Quaternion.from_euler(Vector3(0.0, -sign_side * extension * .22, 0.0))
 		if d[6] == "upper":
-			fist[side].y -= sin(t*PI)*.28
-			end.y = 1.7
-			end.z = .48
+			# Uppercuts now begin below the guard and rise through the target,
+			# instead of tracing the same horizontal line as a straight.
+			fist[side].y = 1.20
+			fist[side].z = .18
+			end.y = 1.92
+			end.z = .42
+			torso.x = -.16 * extension
+			torso.y = -sign_side * extension * .18
+			pose["Hips"] = Quaternion.from_euler(Vector3(-extension * .16, -sign_side * extension * .14, 0.0))
+			pose["LeftThigh"] = Quaternion.from_euler(Vector3(extension * .16 if side==0 else extension * .05,0,0))
+			pose["RightThigh"] = Quaternion.from_euler(Vector3(extension * .16 if side==1 else extension * .05,0,0))
+			pose["LeftShin"] = Quaternion.from_euler(Vector3(-extension * .11 if side==0 else 0,0,0))
+			pose["RightShin"] = Quaternion.from_euler(Vector3(-extension * .11 if side==1 else 0,0,0))
+		if d[6] == "straight":
+			# Jabs stay light and quick; crosses load the rear leg then rotate through.
+			if clip in ["jab", "body_jab"]:
+				torso.y = extension * .10
+				pose["Hips"] = Quaternion.from_euler(Vector3(0.0, extension * .06, 0.0))
+				pose["LeftThigh"] = Quaternion.from_euler(Vector3(extension * .08,0,0))
+			else:
+				torso.y = -extension * .30
+				pose["Hips"] = Quaternion.from_euler(Vector3(-extension * .07, -extension * .20, 0.0))
+				pose["RightThigh"] = Quaternion.from_euler(Vector3(extension * .17,0,0))
+				pose["RightShin"] = Quaternion.from_euler(Vector3(-extension * .10,0,0))
 		fist[side] = fist[side].lerp(end,extension)
 		torso.y -= sign_side*extension*.26
 		torso.x += extension*.12

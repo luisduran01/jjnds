@@ -13,5 +13,20 @@ const DATA = {
 	"body_hook": [0.65,0.23,0.38,11.0,14.0,0,"hook"]
 }
 
+# Compatibility API used by the diagnostic/procedural scripts bundled with
+# the project. The runtime fighter still consumes DATA directly.
+static func has(name: String) -> bool:
+	return DATA.has(name)
+
+static func get_punch(name: String) -> Dictionary:
+	if not DATA.has(name): return {}
+	var d=DATA[name]
+	return {"duration":d[0],"windup":d[1],"active":d[2]-d[1],"hand":d[5],"trajectory":d[6]}
+
+static func live_window(name: String) -> Vector2:
+	if not DATA.has(name): return Vector2.ZERO
+	var d=DATA[name]
+	return Vector2(d[1],d[2])
+
 static func damage(base: float, stamina: float, speed: float, accuracy: float, counter: bool, body: bool, blocked: bool) -> float:
 	return base * lerpf(0.55,1.0,clampf(stamina/100.0,0,1)) * clampf(speed,0.65,1.25) * clampf(accuracy,0.6,1.0) * (1.45 if counter else 1.0) * (0.88 if body else 1.0) * (0.22 if blocked else 1.0)

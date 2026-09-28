@@ -51,14 +51,25 @@ func cylinder(label: String,from: Vector3,to: Vector3,radius: float,color: Color
 	return mesh
 
 func _ready() -> void:
-	box("Canvas",Vector3(7,.22,7),Vector3(0,-.11,0),Color("233e4b"),true)
-	box("Apron",Vector3(7.35,.6,7.35),Vector3(0,-.48,0),Color("111b27"))
-	box("HallFloor",Vector3(28,.2,26),Vector3(0,-.9,0),Color("151c25"),true)
+	# Professional event ring: the combat root remains unchanged; all visual work
+	# lives under Arena/Ring so Fighter, hitboxes and the camera keep their paths.
+	box("Canvas",Vector3(7,.22,7),Vector3(0,-.11,0),Color("aeb4ae"),true)
+	box("CanvasInset",Vector3(6.45,.035,6.45),Vector3(0,.018,0),Color("c4c8bf"))
+	box("Apron",Vector3(7.45,.6,7.45),Vector3(0,-.48,0),Color("111827"))
+	box("Understructure",Vector3(8.1,.32,8.1),Vector3(0,-.85,0),Color("070b12"))
+	box("HallFloor",Vector3(34,.2,30),Vector3(0,-1.03,0),Color("080c14"),true)
+	# Steel steps and ringside barricades make the platform read as an event space.
+	for step in 3:
+		box("RingStep%d"%step,Vector3(1.45,.18,.48+step*.16),Vector3(0,-.82-step*.16,4.0+step*.18),Color("59616b"),true)
+	for side in [-1,1]:
+		box("Barricade%d"%side,Vector3(12,.9,.11),Vector3(0,-.48,side*6.0),Color("273241"))
+		for x in range(-5,6,2): cylinder("BarrierPost",Vector3(x,-.95,side*6.0),Vector3(x,-.05,side*6.0),.035,Color("8f9baa"))
 	for s in [-1,1]:
 		for x in [-1,1]:
-			var color=Color("d34c40") if s==x else Color("e5ded0")
+			var color=Color("d73940") if s==x else Color("2378d0")
 			cylinder("Post",Vector3(s*3.35,-.7,x*3.35),Vector3(s*3.35,1.65,x*3.35),.07,Color("abb4bd"))
-			box("CornerPad",Vector3(.22,.95,.22),Vector3(s*3.23,1.02,x*3.23),color)
+			box("CornerPad",Vector3(.30,1.05,.30),Vector3(s*3.23,1.02,x*3.23),color)
+			box("CornerTopPad",Vector3(.42,.19,.42),Vector3(s*3.23,1.60,x*3.23),color)
 		for level in 4:
 			var y=.47+level*.32
 			var color=[Color("d2d7d7"),Color("2f6287"),Color("d2d7d7"),Color("c93d35")][level]
@@ -73,28 +84,40 @@ func _ready() -> void:
 		box("Column",Vector3(.25,8,.4),Vector3(x,3,-10.7),Color("111924"))
 		box("Window",Vector3(2.8,1.6,.1),Vector3(x,3.9,-10.48),Color("566877"))
 	var logo=Label3D.new()
-	logo.text="CORNER\nCLUB"
-	logo.font_size=140
+	logo.text="BOXIN SSJJ"
+	logo.font_size=160
 	logo.pixel_size=.008
-	logo.modulate=Color(.62,.67,.61,.5)
+	logo.outline_size=8
+	logo.modulate=Color("182842")
 	logo.rotation_degrees.x=-90
 	logo.position=Vector3(0,.015,0)
 	logo.no_depth_test=false
 	add_child(logo)
+	for z in [-2.65,2.65]:
+		var edge_brand=Label3D.new()
+		edge_brand.text="SSJJ  •  LIVE BOXING"
+		edge_brand.font_size=48
+		edge_brand.pixel_size=.008
+		edge_brand.modulate=Color("45536b")
+		edge_brand.rotation_degrees.x=-90
+		edge_brand.position=Vector3(0,.018,z)
+		add_child(edge_brand)
 	var env=WorldEnvironment.new()
 	var settings=Environment.new()
 	settings.background_mode=Environment.BG_COLOR
-	settings.background_color=Color("101722")
+	settings.background_color=Color("03050a")
 	settings.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR
 	settings.ambient_light_color=Color("b6c7d7")
-	settings.ambient_light_energy=.4
+	settings.ambient_light_energy=.28
+	settings.glow_enabled=true
+	settings.glow_intensity=1.15
 	settings.tonemap_mode=Environment.TONE_MAPPER_FILMIC
 	env.environment=settings
 	add_child(env)
 	var key=DirectionalLight3D.new()
 	key.rotation_degrees=Vector3(-58,-25,0)
 	key.light_color=Color("fff0db")
-	key.light_energy=1.1
+	key.light_energy=.45
 	key.shadow_enabled=true
 	key.directional_shadow_max_distance=25
 	add_child(key)
@@ -103,8 +126,45 @@ func _ready() -> void:
 	fill.omni_range=12
 	fill.light_energy=.8
 	add_child(fill)
+	build_light_truss()
+	build_ringside()
 	build_crowd()
 	build_referee()
+
+func build_light_truss() -> void:
+	var truss_color=Color("48515c")
+	for x in [-4.2,4.2]:
+		cylinder("TrussRail",Vector3(x,5.8,-4.2),Vector3(x,5.8,4.2),.06,truss_color)
+	for z in [-4.2,4.2]:
+		cylinder("TrussRail",Vector3(-4.2,5.8,z),Vector3(4.2,5.8,z),.06,truss_color)
+	for x in [-2.5,0.0,2.5]:
+		for z in [-2.5,2.5]:
+			var spot=SpotLight3D.new()
+			spot.position=Vector3(x,5.65,z)
+			spot.rotation_degrees=Vector3(-90,0,0)
+			spot.light_color=Color("fff1d8")
+			spot.light_energy=2.3
+			spot.spot_range=10.0
+			spot.spot_angle=36.0
+			spot.shadow_enabled=true
+			add_child(spot)
+
+func build_ringside() -> void:
+	for side in [-1,1]:
+		for x in [-2.4,0.0,2.4]:
+			var table=box("RingsideTable",Vector3(1.15,.52,.48),Vector3(x,-.72,side*4.45),Color("172130"))
+			# Local coordinates: this is a child of the table, not the arena root.
+			box("TableScreen",Vector3(.48,.28,.03),Vector3(0,.38,-side*.30),Color("5aa8d9"),false,table)
+			# Low-poly staff: near enough to read, cheap enough to keep the focus on fighters.
+			var staff=Node3D.new()
+			staff.position=Vector3(x+(0.33 if side<0 else -.33),-.88,side*4.9)
+			add_child(staff)
+			box("StaffBody",Vector3(.28,.52,.18),Vector3.ZERO+Vector3(0,.72,0),Color("303a49"),false,staff)
+			var head=SphereMesh.new()
+			head.radius=.13; head.height=.26
+			var head_mesh=MeshInstance3D.new()
+			head_mesh.mesh=head; head_mesh.material_override=material(Color("a97858")); head_mesh.position=Vector3(0,1.12,0)
+			staff.add_child(head_mesh)
 
 func build_crowd() -> void:
 	crowd=MultiMeshInstance3D.new()
@@ -181,9 +241,8 @@ func _process(delta: float) -> void:
 			crowd.multimesh.set_instance_transform(i,trans)
 	if fight and fight.player:
 		var middle=(fight.player.position+fight.enemy.position)*.5
-		var desired=middle+Vector3(1.65,0,-1.5)
-		if fight.down_fighter: desired=fight.down_fighter.position+Vector3(.65,0,-.75)
-		desired.x=clampf(desired.x,-2.65,2.65)
-		desired.z=clampf(desired.z,-2.65,2.65)
+		# Keep the referee at ringside so the broadcast camera never frames him
+		# between the fighters; combat logic does not depend on his position.
+		var desired=Vector3(2.85,0,-2.85)
 		referee.position=referee.position.move_toward(desired,delta*1.2)
 		if referee.position.distance_to(middle)>.1: referee.look_at(Vector3(middle.x,0,middle.z),Vector3.UP,true)
